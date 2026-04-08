@@ -2,7 +2,7 @@
 
 ## Objective
 
-Adopt the factory in another repository without copying Phigure-specific assumptions into the new repo.
+Adopt the factory in another repository without carrying over repo-specific assumptions into the new repo.
 
 ## Recommended Consumer Layout
 
@@ -10,6 +10,7 @@ Adopt the factory in another repository without copying Phigure-specific assumpt
 tools/
   agent-factory/
 agent-factory.profile.json
+.agent-automation/
 ```
 
 ## Adoption Steps
@@ -20,40 +21,39 @@ agent-factory.profile.json
 ./tools/agent-factory/scripts/install.sh --target .
 ```
 
-2. Edit `agent-factory.profile.json` for the target repo:
-   - branches
-   - labels
-   - roles
-   - lanes
-   - required docs
+2. Edit `agent-factory.profile.json`:
+   - repo identity
+   - branches and labels
+   - enabled hosts and default host
+   - enabled packs
+   - cost profile model env vars
    - promotion flow
-   - hook and workflow paths
 
-3. Render templates:
+3. Render assets:
 
 ```bash
 ./tools/agent-factory/scripts/render.sh --repo-root . --profile ./agent-factory.profile.json
 ```
 
-4. Validate:
+4. Validate and smoke:
 
 ```bash
 ./tools/agent-factory/scripts/validate.sh --repo-root . --profile ./agent-factory.profile.json
 ./tools/agent-factory/scripts/smoke.sh --repo-root . --profile ./agent-factory.profile.json
 ```
 
-5. Replace placeholder hooks and workflows with repo-owned implementations, or keep them as thin wrappers around existing automation.
+## Consumer Ownership
 
-## Shadow Mode
+Upstream factory owns:
 
-The safe path is to run the package in shadow mode first:
+- contracts
+- host defaults
+- packs
+- render and validation logic
 
-- keep current entrypoints live
-- add profile and validation
-- render the templates
-- compare decisions before cutover
+Consumer repo owns:
 
-## Ownership
-
-- upstream repo owns contracts, templates, docs, and generic scripts
-- consumer repo owns the profile and repo-specific hooks
+- the profile
+- model env var values
+- repo-specific wrappers or overrides
+- any trusted local runtime or QA commands

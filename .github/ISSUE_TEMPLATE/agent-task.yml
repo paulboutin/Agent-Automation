@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template to create one task issue for one automated worker.
+        Use this template to create one task issue for one automation worker pass.
         Apply exactly one lane label and one role to each task.
         Use base-branch scoping when you need an isolated concurrent workstream.
   - type: dropdown

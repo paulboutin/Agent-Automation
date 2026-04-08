@@ -1,25 +1,37 @@
 # Operating Model
 
-The factory is split into two layers:
+The factory is organized around:
 
 - `core`
-  Contracts, scripts, templates, and shared process rules.
-- `repo profile`
-  Branches, labels, lanes, roles, docs, promotion rules, and hook paths.
+  Contracts, rendering, validation, and profile resolution.
+- `hosts`
+  Declarative settings for supported AI runners.
+- `packs`
+  Reusable automation, governance, review, and QA behavior.
 
 ## Current Scope
 
-The current scaffold covers:
+The v2 scaffold covers:
 
-- worker status contracts
-- PR wake contracts
-- role-to-cost defaults
+- worker status and PR wake contracts
 - queue label policy
-- branch naming policy
+- worker branch naming policy
 - promotion transition policy
-- canonical issue and PR templates
-- portable message templates
-- install, render, validate, and smoke commands
+- issue and PR templates
+- GitHub automation workflows
+- local worker, QA, relay, and merge-daemon hooks
+- review and QA methodology packs
+
+## GitHub-First Boundary
+
+Repository orchestration stays GitHub-first in v1:
+
+- GitHub issues for task intake
+- GitHub PRs for worker outputs
+- GitHub Actions for hosted automation where supported
+- local hooks for trusted or host-specific execution
+
+Host portability is part of v1. Git-provider portability is not.
 
 ## Concurrent Workstreams
 
@@ -28,17 +40,9 @@ Concurrent workstreams are namespaced by base branch and optional scope.
 Example:
 
 ```bash
-eval "$(./tools/agent-factory/scripts/automation-scope-env.sh --base-branch codex/feature-branch)"
+eval "$(./tools/agent-factory/scripts/automation-scope-env.sh --base-branch agent/feature-branch)"
 ```
 
-## Hooks
+## Promotion Rule
 
-Hooks are the repo-specific seam:
-
-- worker start/finish
-- tmux launchers
-- coordinator relay
-- merge daemon
-- operator-proof QA
-
-If multiple repos need the same hook behavior, promote it into core.
+Generic core owns shared process behavior. Consumer repos own repo-specific validation commands, policy wrappers, and environment assumptions through the profile or local wrappers.

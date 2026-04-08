@@ -1,0 +1,211 @@
+name: Agent Task Worker
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - labeled
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: agent-task-worker-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  run-worker:
+    if: ${{ contains(github.event.issue.labels.*.name, 'ready') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve dispatch metadata
+        id: meta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = (context.payload.issue.labels || []).map((item) => item.name);
+            const issueBody = context.payload.issue.body || '';
+            const laneMatch = issueBody.match(/### Lane\s+([^\n\r]+)/i);
+            const laneFromBody = laneMatch ? laneMatch[1].trim() : '';
+            const normalizedLane = (laneFromBody.replace(/^agent:/, '') || 'backend')
+              .toLowerCase()
+              .replace(/[^a-z0-9-]+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '');
+
+            const costMatch = issueBody.match(/### Cost profile\s+([^\n\r]+)/i);
+            const costProfile = (costMatch ? costMatch[1] : 'standard').trim().toLowerCase();
+            const effort = { low: 'low', standard: 'medium', high: 'high' }[costProfile] || 'medium';
+
+            core.setOutput('lane', normalizedLane || 'backend');
+            core.setOutput('cost_profile', costProfile || 'standard');
+            core.setOutput('effort', effort);
+            core.setOutput('issue_title', context.payload.issue.title || '');
+            core.setOutput('issue_body', issueBody);
+
+      - name: Skip unsupported hosted configuration
+        if: ${{ 'true' != 'true' || 'codex' != 'codex' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: [
+                'Hosted dispatch skipped.',
+                '',
+                `Configured default host: codex`,
+                '',
+                'This repo is configured for local agent execution. Use `.agent-automation/hooks/local-worker-launch-tmux.sh --run-agent <issue>` on a trusted machine.'
+              ].join('\n')
+            });
+
+      - name: Checkout repository
+        if: ${{ 'true' == 'true' && 'codex' == 'codex' }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mark issue active
+        if: ${{ 'true' == 'true' && 'codex' == 'codex' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: ['active']
+            }).catch(() => {});
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              name: 'ready'
+            }).catch(() => {});
+
+      - name: Create worker branch
+        if: ${{ 'true' == 'true' && 'codex' == 'codex' }}
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          LANE: ${{ steps.meta.outputs.lane }}
+          WORKER_BRANCH_FORMAT: "agent/issue-{issue_number}-{lane}"
+          BASE_BRANCH: "development"
+        run: |
+          set -euo pipefail
+          worker_branch="$(python3 -c 'import sys; fmt, issue_number, lane = sys.argv[1:]; print(fmt.replace("{issue_number}", issue_number).replace("{lane}", lane))' "${WORKER_BRANCH_FORMAT}" "${ISSUE_NUMBER}" "${LANE}")"
+          echo "WORKER_BRANCH=${worker_branch}" >> "${GITHUB_ENV}"
+          if git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
+            git checkout -B "${worker_branch}" "origin/${BASE_BRANCH}"
+          else
+            git checkout -B "${worker_branch}" "HEAD"
+          fi
+
+      - name: Run hosted Codex worker
+        if: ${{ 'true' == 'true' && 'codex' == 'codex' }}
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          effort: ${{ steps.meta.outputs.effort }}
+          prompt: |
+            You are the hosted automation worker for this issue.
+            Keep work scoped and branch-safe.
+
+            Issue: #${{ github.event.issue.number }}
+            Title: ${{ steps.meta.outputs.issue_title }}
+
+            Issue body:
+            ${{ steps.meta.outputs.issue_body }}
+
+            End your final output with exactly one status line:
+            STATUS: DONE
+            STATUS: BLOCKED
+            STATUS: NEEDS_INFO
+            STATUS: FAILED
+
+            If blocked, include QUESTION / OPTION 1 / OPTION 2.
+
+      - name: Parse worker status
+        if: ${{ 'true' == 'true' && 'codex' == 'codex' }}
+        id: status
+        env:
+          FINAL_MESSAGE: ${{ steps.codex.outputs.final-message }}
+        run: |
+          set -euo pipefail
+          status="$(printf '%s\n' "${FINAL_MESSAGE}" | grep -Eo 'STATUS:[[:space:]]*(DONE|BLOCKED|NEEDS_INFO|FAILED)' | tail -n1 | awk -F':' '{gsub(/[[:space:]]/, "", $2); print $2}')"
+          [[ -n "${status}" ]] || status="FAILED"
+          {
+            echo "status=${status}"
+            echo "final_message<<EOF"
+            printf '%s\n' "${FINAL_MESSAGE}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Commit and push changes
+        if: ${{ steps.status.outputs.status == 'DONE' && 'true' == 'true' && 'codex' == 'codex' }}
+        env:
+          WORKER_BRANCH: ${{ env.WORKER_BRANCH }}
+        run: |
+          set -euo pipefail
+          git config user.name "agent-automation[bot]"
+          git config user.email "agent-automation@example.invalid"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No tracked changes to commit."
+          else
+            git commit -m "agent: ${{ steps.meta.outputs.issue_title }} (#${{ github.event.issue.number }})"
+            git push -u origin "${WORKER_BRANCH}"
+          fi
+
+      - name: Open or reuse PR
+        if: ${{ steps.status.outputs.status == 'DONE' && 'true' == 'true' && 'codex' == 'codex' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKER_BRANCH: ${{ env.WORKER_BRANCH }}
+        run: |
+          set -euo pipefail
+          if gh pr list --head "${WORKER_BRANCH}" --json url --limit 1 | jq -e 'length > 0' >/dev/null; then
+            exit 0
+          fi
+          python3 "././scripts/render-pr-body.py" --repo-root . --profile ./agent-factory.profile.json --mode autofill --head-ref "${WORKER_BRANCH}" > pr-body.md
+          gh pr create --base "development" --head "${WORKER_BRANCH}" --title "${{ steps.meta.outputs.issue_title }}" --body-file pr-body.md || true
+
+      - name: Route issue status
+        if: ${{ 'true' == 'true' && 'codex' == 'codex' }}
+        uses: actions/github-script@v7
+        env:
+          STATUS: ${{ steps.status.outputs.status }}
+          FINAL_MESSAGE: ${{ steps.status.outputs.final_message }}
+        with:
+          script: |
+            const issue_number = context.payload.issue.number;
+            const status = process.env.STATUS || 'FAILED';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: process.env.FINAL_MESSAGE || `STATUS: ${status}`
+            });
+
+            await github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'active' }).catch(() => {});
+
+            if (status === 'DONE') {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'agent-failed' }).catch(() => {});
+              await github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'needs-decision' }).catch(() => {});
+              return;
+            }
+
+            if (status === 'BLOCKED' || status === 'NEEDS_INFO') {
+              await github.rest.issues.addLabels({ owner, repo, issue_number, labels: ['needs-decision'] }).catch(() => {});
+              return;
+            }
+
+            await github.rest.issues.addLabels({ owner, repo, issue_number, labels: ['agent-failed'] }).catch(() => {});

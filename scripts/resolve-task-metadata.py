@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from agent_factory_profile import load_profile
+from agent_factory_profile import load_profile, resolve_execution, resolve_host
 
 
 def read_text(path: str | None) -> str:
@@ -36,6 +36,8 @@ def main() -> int:
 
     repo_root = Path(args.repo_root).resolve()
     profile, _ = load_profile(repo_root, args.profile)
+    execution = resolve_execution(profile)
+    default_host = resolve_host(profile, execution["defaultHost"])
     body = read_text(args.issue_body_file)
     labels = json.loads(read_text(args.labels_json_file) or "[]")
     label_names = set(labels)
@@ -61,15 +63,20 @@ def main() -> int:
     role_map = {item["name"]: item for item in profile.get("roles", [])}
     lane_map = {item["name"]: item for item in profile.get("lanes", [])}
     cost_name = explicit_cost or role_map.get(role, {}).get("defaultCost") or lane_map.get(lane, {}).get("defaultCost") or "standard"
-    cost = (profile.get("costProfiles") or {}).get(cost_name, {})
-    model_key = "hostedModelVar" if args.model_mode == "hosted" else "localModelVar"
+    cost = (execution.get("costProfiles") or {}).get(cost_name, {})
+    host_cost = ((cost.get("hosts") or {}).get(default_host["name"]) or {})
+    model_key = "hostedModelEnvVar" if args.model_mode == "hosted" else "localModelEnvVar"
 
     result = {
         "role": role,
         "lane": lane,
         "costProfile": cost_name,
         "reasoningEffort": cost.get("reasoningEffort", "medium"),
-        "modelEnvVar": cost.get(model_key, ""),
+        "defaultHost": default_host["name"],
+        "hostDisplayName": default_host["displayName"],
+        "hostSupportsHosted": bool(default_host.get("supportsHosted")),
+        "modelEnvVar": host_cost.get(model_key, ""),
+        "variant": host_cost.get("variant", cost.get("reasoningEffort", "medium")),
         "baseBranch": parse_field(body, "Base branch") or (profile.get("branches") or {}).get("development", "development"),
         "scope": parse_field(body, "Automation scope"),
     }

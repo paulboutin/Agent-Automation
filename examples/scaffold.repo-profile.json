@@ -1,8 +1,11 @@
 {
-  "version": "repo-profile.v1",
+  "version": "repo-profile.v2",
   "repo": {
     "id": "consumer-repo",
     "name": "Consumer Repo"
+  },
+  "platform": {
+    "name": "github"
   },
   "branches": {
     "development": "development",
@@ -10,7 +13,7 @@
       "stage",
       "main"
     ],
-    "workerBranchFormat": "codex/issue-{issue_number}-{lane}"
+    "workerBranchFormat": "agent/issue-{issue_number}-{lane}"
   },
   "labels": {
     "ready": "ready",
@@ -72,22 +75,96 @@
       "defaultCost": "low"
     }
   ],
-  "costProfiles": {
-    "low": {
-      "reasoningEffort": "low",
-      "hostedModelVar": "CODEX_MODEL_LOW",
-      "localModelVar": "WORKER_MODEL_LOW"
-    },
-    "standard": {
-      "reasoningEffort": "medium",
-      "hostedModelVar": "CODEX_MODEL_STANDARD",
-      "localModelVar": "WORKER_MODEL_STANDARD"
-    },
-    "high": {
-      "reasoningEffort": "high",
-      "hostedModelVar": "CODEX_MODEL_HIGH",
-      "localModelVar": "WORKER_MODEL_HIGH"
+  "execution": {
+    "defaultHost": "codex",
+    "enabledHosts": [
+      "codex",
+      "claude",
+      "opencode"
+    ],
+    "hostedEnabled": true,
+    "automationRoot": ".agent-automation",
+    "costProfiles": {
+      "low": {
+        "reasoningEffort": "low",
+        "hosts": {
+          "codex": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_LOW",
+            "hostedModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_LOW"
+          },
+          "claude": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CLAUDE_MODEL_LOW"
+          },
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_LOW",
+            "variant": "low"
+          }
+        }
+      },
+      "standard": {
+        "reasoningEffort": "medium",
+        "hosts": {
+          "codex": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_STANDARD",
+            "hostedModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_STANDARD"
+          },
+          "claude": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CLAUDE_MODEL_STANDARD"
+          },
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_STANDARD",
+            "variant": "medium"
+          }
+        }
+      },
+      "high": {
+        "reasoningEffort": "high",
+        "hosts": {
+          "codex": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_HIGH",
+            "hostedModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_HIGH"
+          },
+          "claude": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CLAUDE_MODEL_HIGH"
+          },
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_HIGH",
+            "variant": "high"
+          }
+        }
+      }
     }
+  },
+  "hosts": {
+    "codex": {
+      "displayName": "OpenAI Codex CLI",
+      "cliCommand": "codex",
+      "cliAliases": [
+        "agents"
+      ],
+      "homeRoot": ".codex/agent-automation",
+      "repoRoot": ".agents/agent-automation"
+    },
+    "claude": {
+      "displayName": "Claude Code",
+      "cliCommand": "claude",
+      "cliAliases": [],
+      "homeRoot": ".claude/agent-automation",
+      "repoRoot": ".claude/agent-automation"
+    },
+    "opencode": {
+      "displayName": "OpenCode",
+      "cliCommand": "opencode",
+      "cliAliases": [],
+      "homeRoot": ".config/opencode/agent-automation",
+      "repoRoot": ".opencode/agent-automation"
+    }
+  },
+  "packs": {
+    "automation": true,
+    "governance": true,
+    "review": true,
+    "qa": true
   },
   "protocols": {
     "workerStatus": "worker-status.v1",
@@ -96,28 +173,11 @@
   "requiredDocs": [
     "README.md"
   ],
-  "workflows": {
-    "hostedWorker": "tools/agent-factory/templates/workflows/codex-task-worker.yml",
-    "unblocker": "tools/agent-factory/templates/workflows/codex-unblocker.yml",
-    "prWake": "tools/agent-factory/templates/workflows/codex-coordinator-pr-wake.yml"
-  },
-  "localAutomation": {
-    "workerStart": "tools/agent-factory/templates/hooks/local-worker-start.sh",
-    "workerFinish": "tools/agent-factory/templates/hooks/local-worker-finish.sh",
-    "workerLaunchTmux": "tools/agent-factory/templates/hooks/local-worker-launch-tmux.sh",
-    "workerRunAndRoute": "tools/agent-factory/templates/hooks/local-worker-run-and-route.sh"
-  },
-  "mergeDaemon": {
-    "handler": "tools/agent-factory/templates/hooks/coordinator-relay-handle.sh",
-    "poller": "tools/agent-factory/templates/hooks/coordinator-relay-poll.sh",
-    "launcher": "tools/agent-factory/templates/hooks/merge-daemon-launch-next.sh",
-    "status": "tools/agent-factory/templates/hooks/merge-daemon-status.sh"
-  },
   "templates": {
     "issueTask": {
       "description": "Coordinator intake for one automation worker task.",
       "introLines": [
-        "Use this template to create one task issue for one automated worker.",
+        "Use this template to create one task issue for one automation worker pass.",
         "Apply exactly one lane label and one role to each task.",
         "Use base-branch scoping when you need an isolated concurrent workstream."
       ],
@@ -148,11 +208,11 @@
         "QA / Release"
       ],
       "workstreamBranchMap": {
-        "codex/s1-backend": "Backend",
-        "codex/s1-frontend": "Frontend",
-        "codex/s1-infra": "Infra / CI",
-        "codex/s1-docs": "Docs / DX",
-        "codex/s1-qa": "QA / Release"
+        "agent/s1-backend": "Backend",
+        "agent/s1-frontend": "Frontend",
+        "agent/s1-infra": "Infra / CI",
+        "agent/s1-docs": "Docs / DX",
+        "agent/s1-qa": "QA / Release"
       },
       "checklistItems": [
         "Checklist created and used during implementation",
@@ -225,8 +285,6 @@
     "envHelperScript": "tools/agent-factory/scripts/automation-scope-env.sh"
   },
   "operatorProof": {
-    "lane": "qa",
-    "launchScript": "tools/agent-factory/templates/hooks/local-qa-proof-launch-tmux.sh",
-    "runScript": "tools/agent-factory/templates/hooks/local-qa-proof-run.sh --issue <number>"
+    "lane": "qa"
   }
 }

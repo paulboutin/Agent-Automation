@@ -1,0 +1,155 @@
+{
+  "version": "repo-profile.v2",
+  "repo": {
+    "id": "consumer-repo",
+    "name": "Consumer Repo (OpenCode)"
+  },
+  "platform": {
+    "name": "github"
+  },
+  "branches": {
+    "development": "development",
+    "promotion": [
+      "stage",
+      "main"
+    ],
+    "workerBranchFormat": "agent/issue-{issue_number}-{lane}"
+  },
+  "labels": {
+    "ready": "ready",
+    "active": "active",
+    "needsDecision": "needs-decision",
+    "decisionProposed": "decision-proposed",
+    "agentFailed": "agent-failed",
+    "lanePrefix": "agent:"
+  },
+  "roles": [
+    {
+      "name": "implementer",
+      "defaultCost": "standard"
+    }
+  ],
+  "lanes": [
+    {
+      "name": "backend",
+      "defaultCost": "standard"
+    }
+  ],
+  "execution": {
+    "defaultHost": "opencode",
+    "enabledHosts": [
+      "opencode"
+    ],
+    "hostedEnabled": false,
+    "automationRoot": ".agent-automation",
+    "costProfiles": {
+      "low": {
+        "reasoningEffort": "low",
+        "hosts": {
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_LOW",
+            "variant": "low"
+          }
+        }
+      },
+      "standard": {
+        "reasoningEffort": "medium",
+        "hosts": {
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_STANDARD",
+            "variant": "medium"
+          }
+        }
+      },
+      "high": {
+        "reasoningEffort": "high",
+        "hosts": {
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_HIGH",
+            "variant": "high"
+          }
+        }
+      }
+    }
+  },
+  "hosts": {
+    "opencode": {
+      "displayName": "OpenCode",
+      "cliCommand": "opencode",
+      "cliAliases": [],
+      "homeRoot": ".config/opencode/agent-automation",
+      "repoRoot": ".opencode/agent-automation"
+    }
+  },
+  "packs": {
+    "automation": true,
+    "governance": true,
+    "review": true,
+    "qa": true
+  },
+  "protocols": {
+    "workerStatus": "worker-status.v1",
+    "workerPrWake": "worker-pr-wake.v1"
+  },
+  "requiredDocs": [
+    "README.md"
+  ],
+  "templates": {
+    "issueTask": {
+      "description": "Coordinator intake for one automation worker task.",
+      "introLines": [
+        "Use this template to create one task issue for one automation worker pass."
+      ],
+      "automationScopePlaceholder": "feature-auth-refresh",
+      "outcomePlaceholder": "Implement the change, add tests, update docs.",
+      "scopePlaceholder": "In-scope files..., out-of-scope files...",
+      "validationPlaceholderLines": [
+        "./scripts/validate.sh"
+      ],
+      "validationDependenciesPlaceholderLines": [
+        "ci"
+      ],
+      "blockersPlaceholder": "Any dependency or decision still pending."
+    },
+    "pullRequest": {
+      "summaryPromptLines": [
+        "What changed?",
+        "How was it validated?"
+      ],
+      "workstreamOptions": [
+        "Backend"
+      ],
+      "workstreamBranchMap": {},
+      "checklistItems": [
+        "Validation/tests run and results reviewed"
+      ],
+      "promotionGateItems": [
+        "Human-tested on development"
+      ]
+    }
+  },
+  "promotion": {
+    "integrationBranches": [
+      "development",
+      "stage",
+      "main"
+    ],
+    "transitions": [
+      {
+        "target": "stage",
+        "head": "development",
+        "base": "stage",
+        "sourceEnv": "dev",
+        "title": "Promote development -> stage",
+        "summary": "Automated promotion PR from `development` to `stage`.",
+        "defaultWorkstream": "Backend",
+        "checklistItems": [
+          "CI checks green"
+        ],
+        "requiredPromotionGates": [
+          "Human-tested on development"
+        ]
+      }
+    ]
+  }
+}

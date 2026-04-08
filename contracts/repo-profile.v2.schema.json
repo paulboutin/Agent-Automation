@@ -1,35 +1,36 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "repo-profile.v1.schema.json",
+  "$id": "repo-profile.v2.schema.json",
   "type": "object",
   "required": [
     "version",
     "repo",
+    "platform",
     "branches",
     "labels",
     "roles",
     "lanes",
-    "costProfiles",
+    "execution",
+    "hosts",
+    "packs",
     "protocols"
   ],
   "properties": {
     "version": {
-      "const": "repo-profile.v1"
+      "const": "repo-profile.v2"
     },
     "repo": {
       "type": "object",
       "required": [
         "id",
         "name"
-      ],
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      }
+      ]
+    },
+    "platform": {
+      "type": "object",
+      "required": [
+        "name"
+      ]
     },
     "branches": {
       "type": "object"
@@ -43,7 +44,13 @@
     "lanes": {
       "type": "array"
     },
-    "costProfiles": {
+    "execution": {
+      "type": "object"
+    },
+    "hosts": {
+      "type": "object"
+    },
+    "packs": {
       "type": "object"
     },
     "protocols": {

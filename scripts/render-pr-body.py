@@ -1,7 +1,26 @@
 #!/usr/bin/env python3
 import argparse
+from pathlib import Path
 
-from agent_factory_profile import load_profile, resolve_promotion
+from agent_factory_profile import load_profile, resolve_promotion, resolve_worker_branch_format
+
+
+def resolve_workstream(config: dict, head_ref: str) -> str:
+    direct = (config.get("workstreamBranchMap") or {}).get(head_ref or "", "")
+    if direct:
+        return direct
+    branch = head_ref or ""
+    if branch.startswith("agent/issue-"):
+        lane = branch.rsplit("-", 1)[-1]
+        lane_map = {
+            "backend": "Backend",
+            "frontend": "Frontend",
+            "infra": "Infra / CI",
+            "docs": "Docs / DX",
+            "qa": "QA / Release",
+        }
+        return lane_map.get(lane, "")
+    return ""
 
 
 def main() -> int:
@@ -13,7 +32,7 @@ def main() -> int:
     parser.add_argument("--head-ref")
     args = parser.parse_args()
 
-    profile, _ = load_profile(__import__("pathlib").Path(args.repo_root).resolve(), args.profile)
+    profile, _ = load_profile(Path(args.repo_root).resolve(), args.profile)
     config = (profile.get("templates") or {}).get("pullRequest") or {}
 
     if args.mode == "promotion":
@@ -34,7 +53,7 @@ def main() -> int:
         print("\n".join(lines))
         return 0
 
-    workstream = (config.get("workstreamBranchMap") or {}).get(args.head_ref or "", "")
+    workstream = resolve_workstream(config, args.head_ref or "")
     lines = [
         "## Summary",
         *(f"- {item}" for item in config.get("summaryPromptLines", [])),

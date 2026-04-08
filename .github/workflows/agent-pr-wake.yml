@@ -1,0 +1,135 @@
+name: Agent PR Wake
+
+on:
+  pull_request_target:
+    branches:
+      - "development"
+    types:
+      - opened
+      - edited
+      - reopened
+      - ready_for_review
+      - review_requested
+      - assigned
+      - synchronize
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: agent-pr-wake-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  wake-queue:
+    runs-on: ubuntu-latest
+    env:
+      AGENT_AUTOMATION_WEBHOOK_URL: ${{ secrets.AGENT_AUTOMATION_WEBHOOK_URL }}
+      AGENT_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AGENT_AUTOMATION_WEBHOOK_TOKEN }}
+    steps:
+      - name: Resolve worker issue number
+        id: ctx
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if [[ "${HEAD_REF}" =~ ^agent/issue-([0-9]+)- ]]; then
+            echo "should_wake=true" >> "${GITHUB_OUTPUT}"
+            echo "issue_number=${BASH_REMATCH[1]}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "should_wake=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Upsert wake comment
+        if: ${{ steps.ctx.outputs.should_wake == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = Number('${{ steps.ctx.outputs.issue_number }}');
+            const pr = context.payload.pull_request;
+            const marker = `<!-- agent-pr-wake:pr-${pr.number} -->`;
+            const lines = [
+              marker,
+              `Queue wake received for worker PR #${pr.number}.`,
+              '',
+              `- Action: \`${context.payload.action}\``,
+              `- PR: ${pr.html_url}`,
+              `- Branch: \`${pr.head.ref}\` -> \`${pr.base.ref}\``,
+              `- Draft: ${pr.draft ? 'yes' : 'no'}`,
+              `- Requested reviewer: ${context.payload.requested_reviewer?.login || '(none)'}`,
+              `- Requested team: ${context.payload.requested_team?.slug || '(none)'}`,
+              `- Assignee: ${context.payload.assignee?.login || '(none)'}`,
+              `- Updated at: ${new Date().toISOString()}`,
+            ];
+            const body = lines.join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => (comment.body || '').includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
+
+      - name: Relay wake payload
+        if: ${{ steps.ctx.outputs.should_wake == 'true' && env.AGENT_AUTOMATION_WEBHOOK_URL != '' }}
+        env:
+          ISSUE_NUMBER: ${{ steps.ctx.outputs.issue_number }}
+          ACTION_NAME: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          REPOSITORY: ${{ github.repository }}
+          SENDER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg version "worker-pr-wake.v1" \
+            --arg repository "${REPOSITORY}" \
+            --arg action "${ACTION_NAME}" \
+            --arg pr_url "${PR_URL}" \
+            --arg base_ref "${BASE_REF}" \
+            --arg head_ref "${HEAD_REF}" \
+            --arg sender "${SENDER}" \
+            --arg updated_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --argjson pr_number "${PR_NUMBER}" \
+            --argjson issue_number "${ISSUE_NUMBER}" \
+            --argjson draft "${PR_DRAFT}" \
+            '{
+              version: $version,
+              repository: $repository,
+              action: $action,
+              pr_number: $pr_number,
+              issue_number: $issue_number,
+              pr_url: $pr_url,
+              base_ref: $base_ref,
+              head_ref: $head_ref,
+              draft: $draft,
+              sender: $sender,
+              updated_at: $updated_at
+            }' > wake.json
+
+          auth_args=()
+          if [[ -n "${AGENT_AUTOMATION_WEBHOOK_TOKEN}" ]]; then
+            auth_args=(-H "Authorization: Bearer ${AGENT_AUTOMATION_WEBHOOK_TOKEN}")
+          fi
+
+          curl --fail --silent --show-error -X POST "${AGENT_AUTOMATION_WEBHOOK_URL}" -H "Content-Type: application/json" "${auth_args[@]}" --data-binary @wake.json
