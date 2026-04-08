@@ -1,0 +1,79 @@
+name: Agent Task
+description: "Coordinator intake for one automation worker task."
+title: "[Task]: "
+labels:
+  - "ready"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to create one task issue for one automated worker.
+        Apply exactly one lane label and one role to each task.
+        Use base-branch scoping when you need an isolated concurrent workstream.
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane
+      options:
+        - agent:backend
+        - agent:frontend
+        - agent:infra
+        - agent:docs
+        - agent:qa
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Agent role
+      options:
+        - implementer
+        - reviewer
+        - planner
+        - doc-writer
+        - qa-verifier
+        - coordinator
+        - operator
+    validations:
+      required: true
+  - type: input
+    id: base_branch
+    attributes:
+      label: Base branch
+      placeholder: "development"
+  - type: input
+    id: automation_scope
+    attributes:
+      label: Automation scope
+      placeholder: "feature-auth-refresh"
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      placeholder: "Implement the change, add tests, update docs."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      placeholder: "In-scope files..., out-of-scope files..."
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      value: |
+        ./scripts/validate.sh
+        npm test
+  - type: textarea
+    id: validation_deps
+    attributes:
+      label: Validation dependencies
+      value: |
+        ci
+        #123
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Known blockers
+      placeholder: "Any dependency, secret, role, or product decision still pending."

@@ -1,0 +1,65 @@
+name: Agent Task
+description: "{{ISSUE_TEMPLATE_DESCRIPTION}}"
+title: "[Task]: "
+labels:
+  - "{{READY_LABEL}}"
+body:
+  - type: markdown
+    attributes:
+      value: |
+{{ISSUE_TEMPLATE_INTRO}}
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane
+      options:
+{{ISSUE_LANE_OPTIONS}}
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Agent role
+      options:
+{{ISSUE_ROLE_OPTIONS}}
+    validations:
+      required: true
+  - type: input
+    id: base_branch
+    attributes:
+      label: Base branch
+      placeholder: "{{DEFAULT_BASE_BRANCH}}"
+  - type: input
+    id: automation_scope
+    attributes:
+      label: Automation scope
+      placeholder: "{{AUTOMATION_SCOPE_PLACEHOLDER}}"
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      placeholder: "{{OUTCOME_PLACEHOLDER}}"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      placeholder: "{{SCOPE_PLACEHOLDER}}"
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      value: |
+{{VALIDATION_PLACEHOLDER}}
+  - type: textarea
+    id: validation_deps
+    attributes:
+      label: Validation dependencies
+      value: |
+{{VALIDATION_DEPENDENCIES_PLACEHOLDER}}
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Known blockers
+      placeholder: "{{BLOCKERS_PLACEHOLDER}}"

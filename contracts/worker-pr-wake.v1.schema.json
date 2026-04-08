@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "worker-pr-wake.v1.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "action",
+    "head_ref",
+    "base_ref"
+  ],
+  "properties": {
+    "version": {
+      "const": "worker-pr-wake.v1"
+    },
+    "action": {
+      "type": "string"
+    },
+    "head_ref": {
+      "type": "string"
+    },
+    "base_ref": {
+      "type": "string"
+    },
+    "requested_reviewer": {
+      "type": "string"
+    }
+  }
+}

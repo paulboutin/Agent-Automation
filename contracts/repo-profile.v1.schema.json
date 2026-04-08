@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repo-profile.v1.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "repo",
+    "branches",
+    "labels",
+    "roles",
+    "lanes",
+    "costProfiles",
+    "protocols"
+  ],
+  "properties": {
+    "version": {
+      "const": "repo-profile.v1"
+    },
+    "repo": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "branches": {
+      "type": "object"
+    },
+    "labels": {
+      "type": "object"
+    },
+    "roles": {
+      "type": "array"
+    },
+    "lanes": {
+      "type": "array"
+    },
+    "costProfiles": {
+      "type": "object"
+    },
+    "protocols": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+name: codex-unblocker-template
+
+on:
+  workflow_dispatch:
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Template unblocker workflow"

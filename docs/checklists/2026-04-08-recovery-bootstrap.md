@@ -1,0 +1,6 @@
+- [x] Recreate the standalone `Agent-Automation` scaffold repo from surviving design context.
+- [x] Restore contracts, docs, profiles, scripts, and templates needed for a working upstream package.
+- [x] Add install/update/render commands for consumer repos.
+- [x] Validate the upstream repo with a self-test profile.
+- [x] Install the package into a scratch consumer repo and validate the vendored path.
+- [ ] Commit and push the recovery branch to GitHub.
