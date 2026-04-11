@@ -1,7 +1,5 @@
 # Agent Automation Factory
 
-## 🎯 Why Use This Tool?
-
 **Stop manual task assignment and start intelligent agent workflows.** This system transforms how teams work by:
 
 - **Automatically assigning the right AI agent** to each GitHub issue based on required skills (role) and domain (lane)
@@ -10,7 +8,7 @@
 - **Scaling development capacity** - run multiple specialized agents in parallel 24/7
 - **Ensuring consistency** - every agent follows the same workflow standards and validation procedures
 
-## 🔄 How It Works (Plain English)
+## How It Works
 
 1. **You define the work**: Create GitHub issues using our standardized template, selecting a **role** (what skills are needed) and **lane** (what domain/backend/frontend/etc.)
 2. **System assigns the agent**: Based on your role selection, the system picks the appropriate AI model (e.g., junior tasks get faster/cheaper models, architecture tasks get powerful models)
@@ -18,14 +16,14 @@
 4. **You monitor progress**: Issues move through standard GitHub workflow (ready → active → needs decision → done) with full audit trail
 5. **Results integrate naturally**: Agents create branches, commit code, open PRs, and update issues just like human developers
 
-## 💰 Cost & Efficiency Benefits
+## Cost & Efficiency Benefits
 
 - **Right-sizing AI usage**: Simple tasks (documentation, tweaks) use low-cost models; complex tasks (architecture, debugging) use powerful models
 - **No idle time**: Agents work 24/7 on queued work - no waiting for human availability
 - **Predictable costs**: Role-based pricing lets you budget AI usage by task type
 - **Reduced overhead**: Eliminates manual task assignment, context switching, and status meeting time
 
-## 📋 Sample Workflow: From Requirements to Sprint
+## Sample Workflow: From Requirements to Sprint
 
 **Scenario**: Product manager finishes designing a new feature and needs development to begin.
 
