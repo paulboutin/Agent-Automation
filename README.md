@@ -1,213 +1,102 @@
 # Agent Automation Factory
 
-Host-agnostic, GitHub-first automation scaffolding for repository work queues, worker issue flows, local agent runners, and reusable review and QA packs.
+## 🎯 Why Use This Tool?
 
-This repository is the upstream source for:
+**Stop manual task assignment and start intelligent agent workflows.** This system transforms how teams work by:
 
-- versioned automation contracts
-- `repo-profile.v2` configuration
-- declarative host configuration for Codex, Claude, and OpenCode
-- reusable automation, governance, review, and QA packs
-- install, render, validate, and smoke commands
-- **Agent role definition and configuration tools**
+- **Automatically assigning the right AI agent** to each GitHub issue based on required skills (role) and domain (lane)
+- **Optimizing costs** by matching task complexity to appropriate AI model tiers (low/standard/high)
+- **Eliminating context switching** - agents work continuously on assigned tickets without human intervention
+- **Scaling development capacity** - run multiple specialized agents in parallel 24/7
+- **Ensuring consistency** - every agent follows the same workflow standards and validation procedures
 
-## What It Does
+## 🔄 How It Works (Plain English)
 
-The factory gives a consumer repository a consistent automation surface:
+1. **You define the work**: Create GitHub issues using our standardized template, selecting a **role** (what skills are needed) and **lane** (what domain/backend/frontend/etc.)
+2. **System assigns the agent**: Based on your role selection, the system picks the appropriate AI model (e.g., junior tasks get faster/cheaper models, architecture tasks get powerful models)
+3. **Agents pick up work**: Automated workers continuously scan for "ready" issues, claim them, and execute using their assigned AI
+4. **You monitor progress**: Issues move through standard GitHub workflow (ready → active → needs decision → done) with full audit trail
+5. **Results integrate naturally**: Agents create branches, commit code, open PRs, and update issues just like human developers
 
-- GitHub issue intake with a canonical task form
-- worker branch naming and PR wake behavior
-- hosted worker workflow support where the selected host supports it
-- local worker hooks for trusted or host-specific execution
-- reusable review and QA methodology packs
-- promotion and merge-daemon support hooks
+## 💰 Cost & Efficiency Benefits
 
-The design goal is to keep generic automation in one upstream package while moving repo-specific policy into the consumer profile.
+- **Right-sizing AI usage**: Simple tasks (documentation, tweaks) use low-cost models; complex tasks (architecture, debugging) use powerful models
+- **No idle time**: Agents work 24/7 on queued work - no waiting for human availability
+- **Predictable costs**: Role-based pricing lets you budget AI usage by task type
+- **Reduced overhead**: Eliminates manual task assignment, context switching, and status meeting time
 
-## Product Model
+## 📋 Sample Workflow: From Requirements to Sprint
 
-The factory is split into three layers:
+**Scenario**: Product manager finishes designing a new feature and needs development to begin.
 
-- `core`
-  Contracts, profile loading, render logic, and shared scripts.
-- `hosts`
-  Declarative host settings for supported local and hosted AI runners.
-- `packs`
-  Reusable behavior bundles such as automation workflows, governance hooks, review checklists, and QA playbooks.
+### Step 1: Create Tickets (Human)
+Product manager creates 3 GitHub issues using our template:
+1. **Issue #101**: 
+   - Role: `implementer` 
+   - Lane: `agent:backend`
+   - Outcome: "Implement user authentication API with JWT tokens"
+2. **Issue #102**:
+   - Role: `implementer`
+   - Lane: `agent:frontend` 
+   - Outcome: "Create login/logout UI components with form validation"
+3. **Issue #103**:
+   - Role: `architect` (custom role you defined)
+   - Lane: `agent:infra`
+   - Outcome: "Design scalable microservice architecture for auth service"
 
-## Supported Hosts
+### Step 2: Agent Assignment (Automatic)
+- Issue #101 → `implementer` role → `standard` cost → `nemotron-3-super-free` model (backend)
+- Issue #102 → `implementer` role → `standard` cost → `nemotron-3-super-free` model (frontend)  
+- Issue #103 → `architect` role → `high` cost → `nemotron-3-super-free` model (architecture)
 
-V1 host implementations:
+### Step 3: Agents Execute (Automatic)
+Your local agent workers (running in terminal or as services) continuously:
+1. Scan for issues with `ready` label
+2. Claim Issue #103 first (highest priority/complexity)
+3. Create feature branch: `agent/issue-103-infra`
+4. Use assigned AI to design microservice architecture
+5. Commit proposed architecture docs and diagrams
+6. Open PR: "Design scalable microservice architecture for auth service"
+7. Move issue to `active` label while PR is open
 
-- `codex`
-- `claude`
-- `opencode`
+### Step 4: Human Review & Continuation
+- You review the architect's PR, provide feedback, approve
+- Once merged, Issue #103 automatically moves to `needs decision` or ready for next phase
+- Meanwhile, Issues #101 and #102 have been picked up by implementer agents
+- Backend agent is coding the JWT API, frontend agent is building login UI
 
-GitHub-hosted automation is available only when the selected default host supports it. In v1 that means Codex. Claude and OpenCode use the same issue, branch, and queue model through the rendered local hooks.
-
-## Supported Packs
-
-- `automation`
-  Task intake, worker dispatch, unblocker, PR wake, and local worker hooks.
-- `governance`
-  Merge-daemon status and launch-next hooks plus promotion helpers.
-- `review`
-  Review checklist and prompt pack.
-- `qa`
-  QA checklist and prompt pack plus operator-proof hook seam.
-
-## Agent Automation Tools
-
-This repository includes specialized tools for configuring and running AI agents with role-based model selection:
-
-### Configuration Scripts
-
-- `scripts/configure_agents.py` - Interactive tool to define agent roles and their associated AI models
-- `scripts/define_role.py` - Interactive tool to define new agent roles with custom names and cost levels
-- `scripts/run_agent_with_fallback.py` - Runs agents with automatic model configuration fallback when models aren't available
-
-### Execution Scripts
-
-- `tools/agent-factory/scripts/agent_factory.py` - Main agent runner that executes roles with configured models
-
-## Quick Start
-
-Install into a target repository:
-
+### Step 5: Monitoring Progress (Human)
+Check status anytime with:
 ```bash
-./scripts/install.sh --target /path/to/repo
+# See what agents are working on
+gh issue list -l "active" 
+
+# Check completed work  
+gh issue list -l "done"
+
+# View agent logs
+cat .agent-automation/logs/worker-*.log
+
+# See queued work
+gh issue list -l "ready"
 ```
 
-Configure agent roles and models:
+### Step 6: Continuous Flow
+As tickets complete:
+- Implementer agents automatically move to next ready `implementer` tasks
+- Architect agent picks up next high-complexity infrastructure task
+- QA agents verify completed work when lanes are done
+- No manual reassignment needed - the system self-balances based on issue labels
 
-```bash
-# Interactive configuration of agent roles and their models
-python scripts/configure_agents.py
+## 🔁 Key Advantages Over Manual Assignment
 
-# Define new custom agent roles
-python scripts/define_role.py
-```
+| Manual Assignment | Agent Automation System |
+|-------------------|-------------------------|
+| Human spends time matching tasks to skills | System auto-matches based on role labels |
+| Expensive models used on simple tasks | Right-sized model allocation per task complexity |
+| Work waits for human availability | 24/7 agent processing queue |
+| Context switching reduces productivity | Agents maintain deep focus on assigned work |
+| Inconsistent approaches across team | Standardized agent workflows and validation |
+| Hard to scale during peak periods | Add more agent workers instantly |
 
-Render assets in that consumer repo:
-
-```bash
-./tools/agent-factory/scripts/render.sh --repo-root . --profile ./agent-factory.profile.json
-```
-
-Validate the result:
-
-```bash
-./tools/agent-factory/scripts/validate.sh --repo-root . --profile ./agent-factory.profile.json
-./tools/agent-factory/scripts/smoke.sh --repo-root . --profile ./agent-factory.profile.json
-```
-
-Run the upstream package checks in this repo:
-
-```bash
-./scripts/validate.sh
-./scripts/smoke.sh
-```
-
-## Using Agent Automation
-
-### 1. Configure Agent Roles and Models
-
-```bash
-# Set up which AI models each agent role should use
-python scripts/configure_agents.py
-```
-
-This creates/updates `agent-factory.profile.json` with your model selections for each role and host combination.
-
-### 2. Define Custom Agent Roles
-
-```bash
-# Create new agent roles beyond the default set
-python scripts/define_role.py
-```
-
-You'll be prompted for:
-- Role name (e.g., "architect", "analyst", "tester")
-- Cost level (low/standard/high) which determines model capability
-- Model preferences for each host (opencode/codex/claude)
-
-### 3. Run Agents with Configured Models
-
-```bash
-# Run a specific agent role with its configured model
-python tools/agent-factory/scripts/agent_factory.py \
-  --role implementer \
-  --host opencode \
-  --task "Implement user authentication system"
-
-# List available roles
-python tools/agent-factory/scripts/agent_factory.py --list-roles
-
-# Run with automatic fallback if models aren't available
-python scripts/run_agent_with_fallback.py \
-  --role operator \
-  --host opencode \
-  --task "Design system architecture"
-```
-
-## Local Worker Flow
-
-Typical local execution path:
-
-1. Create a task issue from the rendered issue template.
-2. Ensure it has one lane and one role.
-3. Launch local workers:
-
-```bash
-./.agent-automation/hooks/local-worker-launch-tmux.sh --run-agent <issue-number>
-```
-
-4. The hook prepares a worktree, prompt file, and branch, then invokes the configured host CLI.
-5. Completion routes back to the issue and PR flow through `local-worker-finish.sh`.
-
-## Concurrent Workstreams
-
-Concurrent workstreams are namespaced by base branch and optional scope.
-
-Example:
-
-```bash
-eval "$(./tools/agent-factory/scripts/automation-scope-env.sh --base-branch agent/feature-auth)"
-```
-
-## Documentation
-
-- [Quickstart](./docs/QUICKSTART.md)
-- [Adoption Guide](./docs/ADOPTION_GUIDE.md)
-- [Operating Model](./docs/OPERATING_MODEL.md)
-- [Host Model](./docs/HOST_MODEL.md)
-- [Pack Model](./docs/PACK_MODEL.md)
-- [Profile Reference](./docs/PROFILE_REFERENCE.md)
-- [Operations Guide](./docs/OPERATIONS.md)
-- [Migrations](./docs/MIGRATIONS.md)
-- **Agent Automation Tools** (this README)
-
-## Repository Layout
-
-- `contracts/`
-- `docs/`
-- `examples/`
-- `scripts/`
-  - `configure_agents.py` - Configure agent roles and models
-  - `define_role.py` - Define new custom agent roles
-  - `run_agent_with_fallback.py` - Run agents with fallback configuration
-  - `compile.py` - Knowledge base compiler
-  - `query.py` - Knowledge base query system
-  - `lint.py` - Knowledge base health checks
-  - And other utility scripts
-- `templates/`
-- `tools/agent-factory/`
-  - `scripts/`
-    - `agent_factory.py` - Main agent execution script
-    - And other factory scripts
-- `knowledge/` - Compiled knowledge base (gitignored)
-- `daily/` - Conversation logs (gitignored)
-
-## Portability Rule
-
-If a change needs a hardcoded repo name, branch name, label name, validation command, or runtime command in generic core logic, it probably belongs in the repo profile, host config, or a consumer-owned wrapper.
+This turns your GitHub repository into a self-orchestrating work factory where AI agents handle routine development work, freeing humans for creative design, strategic decisions, and complex problem-solving that requires human judgment.
