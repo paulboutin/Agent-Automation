@@ -4,61 +4,21 @@ __pycache__/
 
 # AI-Wiki-knowledge (auto-added by install.py)
 *.pyc
-# .venv/
-# scripts/state.json
-# scripts/last-flush.json
-# scripts/flush.log
-# scripts/compile.log
-# scripts/session-flush-*
-# scripts/flush-context-*
-# daily/
-# knowledge/
-# reports/
-# scripts/uv.lock
-# .claude/settings.local.json
-# .codex/config.local.toml
-# .opencode/config.local.json
-# .cursor/hooks.local.json
-# scripts/.compile.lock
+.venv/
+scripts/state.json
+scripts/last-flush.json
+scripts/flush.log
+scripts/compile.log
+scripts/session-flush-*
+scripts/flush-context-*
+daily/
+knowledge/
+reports/
+scripts/uv.lock
+.claude/settings.local.json
+.codex/config.local.toml
+.opencode/config.local.json
+.cursor/hooks.local.json
+scripts/.compile.lock
 Thumbs.db
-# .obsidian/
-
-
-# AI-Wiki-knowledge (auto-added by install.py)
-# .venv/
-# scripts/state.json
-# scripts/last-flush.json
-# scripts/flush.log
-# scripts/compile.log
-# scripts/session-flush-*
-# scripts/flush-context-*
-# daily/
-# knowledge/
-# reports/
-# scripts/uv.lock
-# .claude/settings.local.json
-# .codex/config.local.toml
-# .opencode/config.local.json
-# .cursor/hooks.local.json
-# scripts/.compile.lock
-# .obsidian/
-
-
-# AI-Wiki-knowledge (auto-added by install.py)
-# .venv/
-# scripts/state.json
-# scripts/last-flush.json
-# scripts/flush.log
-# scripts/compile.log
-# scripts/session-flush-*
-# scripts/flush-context-*
-# daily/
-# knowledge/
-# reports/
-# scripts/uv.lock
-# .claude/settings.local.json
-# .codex/config.local.toml
-# .opencode/config.local.json
-# .cursor/hooks.local.json
-# scripts/.compile.lock
-# .obsidian/
+.obsidian/
