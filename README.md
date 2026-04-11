@@ -9,6 +9,7 @@ This repository is the upstream source for:
 - declarative host configuration for Codex, Claude, and OpenCode
 - reusable automation, governance, review, and QA packs
 - install, render, validate, and smoke commands
+- **Agent role definition and configuration tools**
 
 ## What It Does
 
@@ -55,12 +56,36 @@ GitHub-hosted automation is available only when the selected default host suppor
 - `qa`
   QA checklist and prompt pack plus operator-proof hook seam.
 
+## Agent Automation Tools
+
+This repository includes specialized tools for configuring and running AI agents with role-based model selection:
+
+### Configuration Scripts
+
+- `scripts/configure_agents.py` - Interactive tool to define agent roles and their associated AI models
+- `scripts/define_role.py` - Interactive tool to define new agent roles with custom names and cost levels
+- `scripts/run_agent_with_fallback.py` - Runs agents with automatic model configuration fallback when models aren't available
+
+### Execution Scripts
+
+- `tools/agent-factory/scripts/agent_factory.py` - Main agent runner that executes roles with configured models
+
 ## Quick Start
 
 Install into a target repository:
 
 ```bash
 ./scripts/install.sh --target /path/to/repo
+```
+
+Configure agent roles and models:
+
+```bash
+# Interactive configuration of agent roles and their models
+python scripts/configure_agents.py
+
+# Define new custom agent roles
+python scripts/define_role.py
 ```
 
 Render assets in that consumer repo:
@@ -83,18 +108,47 @@ Run the upstream package checks in this repo:
 ./scripts/smoke.sh
 ```
 
-## Consumer Output Layout
+## Using Agent Automation
 
-The rendered consumer repo gets:
+### 1. Configure Agent Roles and Models
 
-- `.github/ISSUE_TEMPLATE/agent-task.yml`
-- `.github/pull_request_template.md`
-- `.github/workflows/agent-task-worker.yml`
-- `.github/workflows/agent-unblocker.yml`
-- `.github/workflows/agent-pr-wake.yml`
-- `.agent-automation/hooks/...`
-- `.agent-automation/packs/review/...`
-- `.agent-automation/packs/qa/...`
+```bash
+# Set up which AI models each agent role should use
+python scripts/configure_agents.py
+```
+
+This creates/updates `agent-factory.profile.json` with your model selections for each role and host combination.
+
+### 2. Define Custom Agent Roles
+
+```bash
+# Create new agent roles beyond the default set
+python scripts/define_role.py
+```
+
+You'll be prompted for:
+- Role name (e.g., "architect", "analyst", "tester")
+- Cost level (low/standard/high) which determines model capability
+- Model preferences for each host (opencode/codex/claude)
+
+### 3. Run Agents with Configured Models
+
+```bash
+# Run a specific agent role with its configured model
+python tools/agent-factory/scripts/agent_factory.py \
+  --role implementer \
+  --host opencode \
+  --task "Implement user authentication system"
+
+# List available roles
+python tools/agent-factory/scripts/agent_factory.py --list-roles
+
+# Run with automatic fallback if models aren't available
+python scripts/run_agent_with_fallback.py \
+  --role operator \
+  --host opencode \
+  --task "Design system architecture"
+```
 
 ## Local Worker Flow
 
@@ -131,6 +185,7 @@ eval "$(./tools/agent-factory/scripts/automation-scope-env.sh --base-branch agen
 - [Profile Reference](./docs/PROFILE_REFERENCE.md)
 - [Operations Guide](./docs/OPERATIONS.md)
 - [Migrations](./docs/MIGRATIONS.md)
+- **Agent Automation Tools** (this README)
 
 ## Repository Layout
 
@@ -138,7 +193,20 @@ eval "$(./tools/agent-factory/scripts/automation-scope-env.sh --base-branch agen
 - `docs/`
 - `examples/`
 - `scripts/`
+  - `configure_agents.py` - Configure agent roles and models
+  - `define_role.py` - Define new custom agent roles
+  - `run_agent_with_fallback.py` - Run agents with fallback configuration
+  - `compile.py` - Knowledge base compiler
+  - `query.py` - Knowledge base query system
+  - `lint.py` - Knowledge base health checks
+  - And other utility scripts
 - `templates/`
+- `tools/agent-factory/`
+  - `scripts/`
+    - `agent_factory.py` - Main agent execution script
+    - And other factory scripts
+- `knowledge/` - Compiled knowledge base (gitignored)
+- `daily/` - Conversation logs (gitignored)
 
 ## Portability Rule
 
