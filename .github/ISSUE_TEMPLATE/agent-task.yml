@@ -1,19 +1,20 @@
 name: Agent Task
-description: "Coordinator intake for one automation worker task."
-title: "[Task]: "
+description: Coordinator intake for one automation worker task.
+title: "[agent] "
 labels:
-  - "ready"
+  - ready
 body:
   - type: markdown
     attributes:
       value: |
-        Use this template to create one task issue for one automation worker pass.
-        Apply exactly one lane label and one role to each task.
-        Use base-branch scoping when you need an isolated concurrent workstream.
+        Use this template to create one task issue for one automated worker.
+        The worker attempts to auto-apply the selected `agent:<lane>` from this form.
+        If auto-apply fails, add exactly one `agent:<lane>` label manually.
   - type: dropdown
     id: lane
     attributes:
-      label: Lane
+      label: Agent lane
+      description: Pick the lane label to apply.
       options:
         - agent:backend
         - agent:frontend
@@ -26,6 +27,7 @@ body:
     id: role
     attributes:
       label: Agent role
+      description: Choose the agent role for this task.
       options:
         - implementer
         - reviewer
@@ -49,31 +51,42 @@ body:
   - type: textarea
     id: outcome
     attributes:
-      label: Desired outcome
-      placeholder: "Implement the change, add tests, update docs."
+      label: Expected outcome
+      description: What should be true when this task is complete?
+      placeholder: Implement X, add tests Y, update docs Z.
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Scope
-      placeholder: "In-scope files..., out-of-scope files..."
+      label: Scope and constraints
+      description: Files/components allowed, and out-of-scope boundaries.
+      placeholder: In-scope files..., out-of-scope files...
+    validations:
+      required: true
   - type: textarea
     id: validation
     attributes:
-      label: Validation plan
-      value: |
+      label: Validation commands
+      description: Exact commands worker should run before finishing.
+      placeholder: |
         ./scripts/validate.sh
         npm test
+    validations:
+      required: true
   - type: textarea
-    id: validation_deps
+    id: validation_dependencies
     attributes:
       label: Validation dependencies
-      value: |
+      description: Optional shared validation pack names or gating issue refs that should block later sibling work until resolved.
+      placeholder: |
         ci
         #123
+    validations:
+      required: false
   - type: textarea
     id: blockers
     attributes:
-      label: Known blockers
-      placeholder: "Any dependency, secret, role, or product decision still pending."
+      label: Known blockers / decisions
+      description: Optional known open decisions.
+      placeholder: Any dependency, secret, role, or product decision still pending.
