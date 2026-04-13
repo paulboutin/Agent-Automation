@@ -17,6 +17,13 @@ jobs:
       - name: Delete merged branch
         run: |
           BRANCH="${{ github.event.pull_request.head.ref }}"
+          PROTECTED="main development stage"
+          
+          if echo "$PROTECTED" | grep -qw "$BRANCH"; then
+            echo "Skipping protected branch: $BRANCH"
+            exit 0
+          fi
+          
           echo "Deleting branch: $BRANCH"
           gh repo delete-branch "$BRANCH" --yes
         env:
