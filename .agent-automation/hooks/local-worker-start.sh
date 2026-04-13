@@ -21,9 +21,16 @@ if [[ "${1:-}" == "--dashboard" ]]; then
   shift
 fi
 
+run_worker="false"
+if [[ "${1:-}" == "--run" ]]; then
+  run_worker="true"
+  shift
+fi
+
 issue_number="${1:-}"
 if [[ -z "${issue_number}" ]]; then
-  echo "Usage: $0 [--json] [--no-claim-active] [--dashboard] <issue-number>" >&2
+  echo "Usage: $0 [--json] [--no-claim-active] [--dashboard] [--run] <issue-number>" >&2
+  echo "  --run: also start the worker in the worktree" >&2
   exit 1
 fi
 
@@ -182,4 +189,13 @@ if [[ "${launch_dashboard}" == "true" ]]; then
   else
     echo "Dashboard: ${dashboard_url}"
   fi
+fi
+
+if [[ "${run_worker}" == "true" ]]; then
+  cd "${worktree}" || exit 1
+  ./.agent-automation/hooks/local-worker-run-and-route.sh \
+    --issue "${issue_number}" \
+    --branch "${branch}" \
+    --prompt "${prompt_file}" \
+    --host "${host_name}"
 fi
