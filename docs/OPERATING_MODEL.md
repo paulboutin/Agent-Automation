@@ -1,5 +1,40 @@
 # Operating Model
 
+## Prerequisites
+
+- **Python 3.12+** - Required runtime
+- **Git** - Version control
+- **GitHub CLI (`gh`)** - GitHub API authentication
+- ** pip** - Package manager
+
+## Setup
+
+1. Install dependencies:
+   ```bash
+   pip install -e .
+   ```
+
+2. Configure GitHub authentication:
+   ```bash
+   gh auth login
+   ```
+
+3. Verify installation:
+   ```bash
+   ./scripts/validate.sh
+   ```
+
+## Dependencies
+
+Project dependencies are defined in `pyproject.toml`:
+- `claude-agent-sdk>=0.1.29` - AI agent SDK
+- `flask>=3.0.0` - Web framework
+- `python-dotenv>=1.0.0` - Environment variables
+- `textual>=0.62.0` - TUI framework
+- `tzdata>=2024.1` - Timezone data
+
+---
+
 The factory is organized around:
 
 - `core`
