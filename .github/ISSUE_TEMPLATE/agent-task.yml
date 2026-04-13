@@ -38,17 +38,6 @@ body:
         - operator
     validations:
       required: true
-  - type: dropdown
-    id: cost
-    attributes:
-      label: Cost profile
-      description: Choose expected model/reasoning budget for this task.
-      options:
-        - standard
-        - low
-        - high
-    validations:
-      required: true
   - type: input
     id: base_branch
     attributes:

@@ -91,6 +91,7 @@ def make_common_replacements(profile: dict, repo_root: Path) -> dict[str, str]:
         "NEEDS_DECISION_LABEL": inline_value(labels["needsDecision"]),
         "DECISION_PROPOSED_LABEL": inline_value(labels["decisionProposed"]),
         "AGENT_FAILED_LABEL": inline_value(labels["agentFailed"]),
+        "MERGE_CONFLICT_LABEL": inline_value(labels["mergeConflict"]),
         "LANE_PREFIX": inline_value(labels["lanePrefix"]),
         "DEFAULT_HOST": inline_value(default_host["name"]),
         "DEFAULT_HOST_DISPLAY_NAME": inline_value(default_host["displayName"]),
