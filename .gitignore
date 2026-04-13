@@ -1,8 +1,5 @@
 __pycache__/
 .DS_Store
-
-
-# AI-Wiki-knowledge (auto-added by install.py)
 *.pyc
 .venv/
 scripts/state.json
@@ -11,9 +8,6 @@ scripts/flush.log
 scripts/compile.log
 scripts/session-flush-*
 scripts/flush-context-*
-daily/
-knowledge/
-reports/
 scripts/uv.lock
 .claude/settings.local.json
 .codex/config.local.toml
@@ -22,3 +16,5 @@ scripts/uv.lock
 scripts/.compile.lock
 Thumbs.db
 .obsidian/
+.agent-automation/prompts/
+.agent-automation/runs/

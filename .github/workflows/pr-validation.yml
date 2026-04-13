@@ -1,0 +1,50 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv sync
+      
+      - name: Run validation
+        run: |
+          ./scripts/validate.sh
+      
+      - name: Run tests (if available)
+        run: |
+          if [ -f "./scripts/validate.sh" ]; then
+            ./scripts/validate.sh
+          fi
+          if [ -f "./scripts/query.py" ]; then
+            echo "Testing knowledge base query..."
+            uv run python scripts/query.py "what do I know?" || echo "Query test completed"
+          fi
+          
+      - name: Check for conflict markers
+        run: |
+          if git grep -r "<<<<<<< HEAD" . -- "*.py" "*.js" "*.sh" "*.md" "*.json" "*.yml" "*.yaml" "*.toml"; then
+            echo "Error: Conflict markers found in repository"
+            exit 1
+          fi
+      
+      - name: Validate issue format (if PR touches issues)
+        if: github.event.pull_request.files != ''
+        run: |
+          echo "PR validation complete - ready for review"

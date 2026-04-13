@@ -1,0 +1,35 @@
+name: Close Issues on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-related-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract issue numbers from PR
+        id: extract-issues
+        run: |
+          # Extract issue numbers from PR title and description
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          # Look for patterns like #[0-9]+ in title and body
+          ISSUE_NUMBERS=$(echo "$PR_TITLE $PR_BODY" | grep -oE '#[0-9]+' | sed 's/#//g' | sort -u || true)
+          
+          if [ -n "$ISSUE_NUMBERS" ]; then
+            echo "issues=$(echo $ISSUE_NUMBERS | tr ' ' ',')" >> $GITHUB_OUTPUT
+          else
+            echo "issues=" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Close referenced issues
+        if: steps.extract-issues.outputs.issues != ''
+        run: |
+          ISSUE_LIST="${{ steps.extract-issues.outputs.issues }}"
+          echo "Closing issues: $ISSUE_LIST"
+          for ISSUE_NUM in $(echo "$ISSUE_LIST" | tr ',' ' '); do
+            gh issue close $ISSUE_NUM --reason "completed" || echo "Failed to close issue #$ISSUE_NUM (might not exist)"
+          done

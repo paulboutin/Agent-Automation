@@ -77,6 +77,12 @@ Inspect queue status:
 ./.agent-automation/hooks/merge-daemon-status.sh
 ```
 
+Inspect open worker PR merge conflicts:
+
+```bash
+gh pr list --state open --label "merge-conflict"
+```
+
 ## Relay Commands
 
 Process queued relay payloads:
@@ -96,4 +102,5 @@ Handle one relay payload directly:
 - Hosted automation in v1 is Codex-only.
 - Local hooks require the selected host CLI, `gh`, and standard shell tools.
 - QA and review packs are methodology packs, not runtime daemons.
+- The PR wake workflow labels conflicted PRs with `merge-conflict` and updates the linked worker issue with a resolution comment for worker branches.
 - Consumer repos should keep any environment-specific wrappers outside generic core.

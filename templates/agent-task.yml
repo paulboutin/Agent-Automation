@@ -1,65 +1,92 @@
 name: Agent Task
-description: "{{ISSUE_TEMPLATE_DESCRIPTION}}"
-title: "[Task]: "
+description: Coordinator intake for one automation worker task.
+title: "[agent] "
 labels:
-  - "{{READY_LABEL}}"
+  - ready
 body:
   - type: markdown
     attributes:
       value: |
-{{ISSUE_TEMPLATE_INTRO}}
+        Use this template to create one task issue for one automated worker.
+        The worker attempts to auto-apply the selected `agent:<lane>` from this form.
+        If auto-apply fails, add exactly one `agent:<lane>` label manually.
   - type: dropdown
     id: lane
     attributes:
-      label: Lane
+      label: Agent lane
+      description: Pick the lane label to apply.
       options:
-{{ISSUE_LANE_OPTIONS}}
+        - agent:backend
+        - agent:frontend
+        - agent:infra
+        - agent:docs
+        - agent:qa
     validations:
       required: true
   - type: dropdown
     id: role
     attributes:
       label: Agent role
+      description: Choose the agent role for this task.
       options:
-{{ISSUE_ROLE_OPTIONS}}
+        - implementer
+        - reviewer
+        - planner
+        - doc-writer
+        - qa-verifier
+        - coordinator
+        - operator
     validations:
       required: true
   - type: input
     id: base_branch
     attributes:
       label: Base branch
-      placeholder: "{{DEFAULT_BASE_BRANCH}}"
+      placeholder: "development"
   - type: input
     id: automation_scope
     attributes:
       label: Automation scope
-      placeholder: "{{AUTOMATION_SCOPE_PLACEHOLDER}}"
+      placeholder: "feature-auth-refresh"
   - type: textarea
     id: outcome
     attributes:
-      label: Desired outcome
-      placeholder: "{{OUTCOME_PLACEHOLDER}}"
+      label: Expected outcome
+      description: What should be true when this task is complete?
+      placeholder: Implement X, add tests Y, update docs Z.
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Scope
-      placeholder: "{{SCOPE_PLACEHOLDER}}"
+      label: Scope and constraints
+      description: Files/components allowed, and out-of-scope boundaries.
+      placeholder: In-scope files..., out-of-scope files...
+    validations:
+      required: true
   - type: textarea
     id: validation
     attributes:
-      label: Validation plan
-      value: |
-{{VALIDATION_PLACEHOLDER}}
+      label: Validation commands
+      description: Exact commands worker should run before finishing.
+      placeholder: |
+        ./scripts/validate.sh
+        npm test
+    validations:
+      required: true
   - type: textarea
-    id: validation_deps
+    id: validation_dependencies
     attributes:
       label: Validation dependencies
-      value: |
-{{VALIDATION_DEPENDENCIES_PLACEHOLDER}}
+      description: Optional shared validation pack names or gating issue refs that should block later sibling work until resolved.
+      placeholder: |
+        ci
+        #123
+    validations:
+      required: false
   - type: textarea
     id: blockers
     attributes:
-      label: Known blockers
-      placeholder: "{{BLOCKERS_PLACEHOLDER}}"
+      label: Known blockers / decisions
+      description: Optional known open decisions.
+      placeholder: Any dependency, secret, role, or product decision still pending.

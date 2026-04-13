@@ -42,6 +42,199 @@ jobs:
             echo "should_wake=false" >> "${GITHUB_OUTPUT}"
           fi
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Detect mergeability
+        id: mergeability
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            let data = context.payload.pull_request;
+            for (let attempt = 0; attempt < 5; attempt += 1) {
+              const response = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+              });
+              data = response.data;
+              if (data.mergeable !== null || (data.mergeable_state || '').trim() !== '') {
+                break;
+              }
+              await sleep(2000);
+            }
+
+            core.setOutput('mergeable', data.mergeable === null ? 'null' : String(Boolean(data.mergeable)));
+            core.setOutput('mergeable_state', data.mergeable_state || '');
+
+      - name: Classify merge conflict state
+        id: conflict
+        env:
+          MERGEABLE: ${{ steps.mergeability.outputs.mergeable }}
+          MERGEABLE_STATE: ${{ steps.mergeability.outputs.mergeable_state }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          python3 "./{{FACTORY_PATH}}/scripts/pr_conflict_state.py" \
+            --mergeable "${MERGEABLE}" \
+            --mergeable-state "${MERGEABLE_STATE}" \
+            --draft "${PR_DRAFT}" > conflict.json
+
+          {
+            echo "classification=$(jq -r '.classification' conflict.json)"
+            echo "has_conflict=$(jq -r '.has_conflict' conflict.json)"
+            echo "reason<<EOF"
+            jq -r '.reason' conflict.json
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Reconcile conflict labels and comments
+        uses: actions/github-script@v7
+        env:
+          SHOULD_WAKE: ${{ steps.ctx.outputs.should_wake }}
+          ISSUE_NUMBER: ${{ steps.ctx.outputs.issue_number }}
+          MERGEABLE: ${{ steps.mergeability.outputs.mergeable }}
+          MERGEABLE_STATE: ${{ steps.mergeability.outputs.mergeable_state }}
+          CONFLICT_CLASSIFICATION: ${{ steps.conflict.outputs.classification }}
+          HAS_CONFLICT: ${{ steps.conflict.outputs.has_conflict }}
+          CONFLICT_REASON: ${{ steps.conflict.outputs.reason }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const hasConflict = process.env.HAS_CONFLICT === 'true';
+            const classification = process.env.CONFLICT_CLASSIFICATION || 'pending';
+            const reason = process.env.CONFLICT_REASON || 'No conflict summary available.';
+            const mergeableState = process.env.MERGEABLE_STATE || '(unknown)';
+            const mergeable = process.env.MERGEABLE || 'null';
+            const conflictLabel = '{{MERGE_CONFLICT_LABEL}}';
+            const prMarker = `<!-- agent-pr-conflict:pr-${pr.number} -->`;
+            const issueMarker = `<!-- agent-pr-conflict-issue:pr-${pr.number} -->`;
+
+            const resolutionLines = hasConflict
+              ? [
+                  prMarker,
+                  `Merge conflict detected for PR #${pr.number}.`,
+                  '',
+                  `- Classification: \`${classification}\``,
+                  `- Mergeable: \`${mergeable}\``,
+                  `- Mergeable state: \`${mergeableState}\``,
+                  `- Base: \`${pr.base.ref}\``,
+                  `- Head: \`${pr.head.ref}\``,
+                  `- Reason: ${reason}`,
+                  '',
+                  'Resolution workflow:',
+                  `1. \`gh pr checkout ${pr.number}\``,
+                  `2. \`git fetch origin ${pr.base.ref}\``,
+                  `3. \`git merge origin/${pr.base.ref}\``,
+                  '4. Resolve conflicts, run validation, commit, and push the branch.',
+                ]
+              : [
+                  prMarker,
+                  `Merge conflict cleared for PR #${pr.number}.`,
+                  '',
+                  `- Classification: \`${classification}\``,
+                  `- Mergeable: \`${mergeable}\``,
+                  `- Mergeable state: \`${mergeableState}\``,
+                  `- Checked at: ${new Date().toISOString()}`,
+                ];
+
+            if (hasConflict) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pr.number,
+                labels: [conflictLabel],
+              }).catch(() => {});
+            } else {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: pr.number,
+                name: conflictLabel,
+              }).catch(() => {});
+            }
+
+            const prComments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: pr.number,
+              per_page: 100,
+            });
+            const existingPrComment = prComments.find((comment) => (comment.body || '').includes(prMarker));
+            if (hasConflict || existingPrComment) {
+              const body = resolutionLines.join('\n');
+              if (existingPrComment) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existingPrComment.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  body,
+                });
+              }
+            }
+
+            if (process.env.SHOULD_WAKE !== 'true' || !process.env.ISSUE_NUMBER) {
+              return;
+            }
+
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const issueComments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const existingIssueComment = issueComments.find((comment) => (comment.body || '').includes(issueMarker));
+            if (!hasConflict && !existingIssueComment) {
+              return;
+            }
+
+            const issueBody = [
+              issueMarker,
+              hasConflict
+                ? `Worker PR #${pr.number} has a merge conflict and needs branch reconciliation.`
+                : `Worker PR #${pr.number} no longer reports a merge conflict.`,
+              '',
+              `- PR: ${pr.html_url}`,
+              `- Classification: \`${classification}\``,
+              `- Mergeable: \`${mergeable}\``,
+              `- Mergeable state: \`${mergeableState}\``,
+              `- Reason: ${reason}`,
+              '',
+              hasConflict
+                ? `Next step: rebase or merge \`${pr.base.ref}\` into \`${pr.head.ref}\`, resolve conflicts, validate, and push.`
+                : 'Next step: continue normal review or automation flow.',
+            ].join('\n');
+
+            if (existingIssueComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingIssueComment.id,
+                body: issueBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: issueBody,
+              });
+            }
+          }
+
       - name: Upsert wake comment
         if: ${{ steps.ctx.outputs.should_wake == 'true' }}
         uses: actions/github-script@v7
@@ -97,6 +290,10 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_DRAFT: ${{ github.event.pull_request.draft }}
+          MERGEABLE: ${{ steps.mergeability.outputs.mergeable }}
+          MERGEABLE_STATE: ${{ steps.mergeability.outputs.mergeable_state }}
+          HAS_CONFLICT: ${{ steps.conflict.outputs.has_conflict }}
+          CONFLICT_CLASSIFICATION: ${{ steps.conflict.outputs.classification }}
           REPOSITORY: ${{ github.repository }}
           SENDER: ${{ github.actor }}
         run: |
@@ -110,6 +307,10 @@ jobs:
             --arg head_ref "${HEAD_REF}" \
             --arg sender "${SENDER}" \
             --arg updated_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --arg mergeable_state "${MERGEABLE_STATE}" \
+            --arg conflict_classification "${CONFLICT_CLASSIFICATION}" \
+            --arg mergeable_raw "${MERGEABLE}" \
+            --arg has_conflict_raw "${HAS_CONFLICT}" \
             --argjson pr_number "${PR_NUMBER}" \
             --argjson issue_number "${ISSUE_NUMBER}" \
             --argjson draft "${PR_DRAFT}" \
@@ -123,6 +324,10 @@ jobs:
               base_ref: $base_ref,
               head_ref: $head_ref,
               draft: $draft,
+              mergeable: (if $mergeable_raw == "true" then true elif $mergeable_raw == "false" then false else null end),
+              mergeable_state: $mergeable_state,
+              merge_conflict: ($has_conflict_raw == "true"),
+              conflict_classification: $conflict_classification,
               sender: $sender,
               updated_at: $updated_at
             }' > wake.json
