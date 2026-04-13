@@ -77,6 +77,13 @@ Inspect queue status:
 ./.agent-automation/hooks/merge-daemon-status.sh
 ```
 
+The daemon status output now starts with a dashboard-style summary for:
+- queue status and launch candidates
+- active worker heartbeats
+- stale worker and stale PR detection
+- PR dependency edges
+- heartbeat health totals
+
 Inspect open worker PR merge conflicts:
 
 ```bash
