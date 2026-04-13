@@ -1,0 +1,88 @@
+name: Agent Self-Healer
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      max_restarts:
+        description: 'Max restart attempts per worker'
+        default: '3'
+        required: false
+      max_age_hours:
+        description: 'Hours before worker considered stuck'
+        default: '1'
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: agent-self-healer
+  cancel-in-progress: false
+
+jobs:
+  detect-and-heal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run self-healing check
+        id: heal
+        env:
+          SELF_HEAL_MAX_RESTARTS: ${{ github.event.inputs.max_restarts || '3' }}
+          SELF_HEAL_MAX_AGE_HOURS: ${{ github.event.inputs.max_age_hours || '1' }}
+        run: |
+          set -euo pipefail
+          
+          source "./.agent-automation/hooks/agent-automation-common.sh"
+          
+          max_restarts="${SELF_HEAL_MAX_RESTARTS:-3}"
+          max_age_hours="${SELF_HEAL_MAX_AGE_HOURS:-1}"
+          
+          ready_label="$(jq -r '.readyLabel' <<< "$(gh api repos/$(gh repo --json name,owner --jq '.owner.login .name')/contents/agent-factory.profile.json 2>/dev/null | jq -r '.content' | base64 -d | jq '.labels.ready')")"
+          active_label="$(jq -r '.activeLabel' <<< "$(gh api repos/$(gh repo --json name,owner --jq '.owner.login .name')/contents/agent-factory.profile.json 2>/dev/null | jq -r '.content' | base64 -d | jq '.labels.active')")"
+          failed_label="$(jq -r '.agentFailedLabel' <<< "$(gh api repos/$(gh repo --json name,owner --jq '.owner.login .name')/contents/agent-factory.profile.json 2>/dev/null | jq -r '.content' | base64 -d | jq '.labels.agentFailed')")"
+          
+          stuck_threshold="$(date -d "${max_age_hours} hours ago" +%Y-%m-%dT%H:%M:%S)"
+          active_issues="$(gh issue list --state open --label "${active_label}" --json number,title,updatedAt,labels,url)"
+          
+          echo "Checking for stuck workers (threshold: ${stuck_threshold})..."
+          
+          for issue in $(echo "${active_issues}" | jq -r '.[] | @json'); do
+            issue_number=$(echo "${issue}" | jq -r '.number')
+            updated_at=$(echo "${issue}" | jq -r '.updatedAt')
+            
+            if [[ "${updated_at}" < "${stuck_threshold}" ]]; then
+              echo "Found stuck worker: issue #${issue_number} (last update: ${updated_at})"
+              
+              restart_label="${active_label}-restart"
+              existing_restarts=$(gh issue list --state open --label "${restart_label}" --json number 2>/dev/null | jq "[.[] | select(.number == ${issue_number})] | length" || echo "0")
+              current_restarts=$((${existing_restarts:-0}))
+              
+              if [[ ${current_restarts} -ge ${max_restarts} ]]; then
+                echo "Worker #${issue_number} exceeded restart limit (${max_restarts}). Marking as failed."
+                gh issue edit "${issue_number}" --remove-label "${active_label}" 2>/dev/null || true
+                gh issue edit "${issue_number}" --add-label "${failed_label}" 2>/dev/null || true
+                gh issue comment "${issue_number}" --body "Self-heal: worker detected stuck and exceeded restart limit (${max_restarts}). Marked as failed." 2>/dev/null || true
+                continue
+              fi
+              
+              echo "Restarting worker #${issue_number} (attempt $((current_restarts + 1))/${max_restarts})..."
+              gh issue edit "${issue_number}" --remove-label "${active_label}" 2>/dev/null || true
+              gh issue edit "${issue_number}" --add-label "${restart_label}" 2>/dev/null || true
+              gh issue edit "${issue_number}" --add-label "${ready_label}" 2>/dev/null || true
+              gh issue comment "${issue_number}" --body "Self-heal: worker detected stuck (no updates since ${updated_at}). Restarting (attempt $((current_restarts + 1))/${max_restarts})." 2>/dev/null || true
+            fi
+          done
+          
+          echo "Self-healing check complete."
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "Self-healing workflow completed."
