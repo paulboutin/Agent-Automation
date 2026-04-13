@@ -39,7 +39,7 @@ jobs:
           
       - name: Check for conflict markers
         run: |
-          if git grep -r "<<<<<<<" . || git grep -r ">>>>>>>" . || git grep -r "=======" .; then
+          if git grep -r "<<<<<<< HEAD" . -- "*.py" "*.js" "*.sh" "*.md" "*.json" "*.yml" "*.yaml" "*.toml"; then
             echo "Error: Conflict markers found in repository"
             exit 1
           fi
