@@ -162,6 +162,7 @@ fi
 if [[ "${launch_dashboard}" == "true" ]]; then
   dashboard_session="worker-dashboard"
   dashboard_port=8765
+  dashboard_url="http://localhost:${dashboard_port}"
   
   if command -v tmux >/dev/null 2>&1; then
     if tmux has-session -t "${dashboard_session}" 2>/dev/null; then
@@ -177,6 +178,8 @@ if [[ "${launch_dashboard}" == "true" ]]; then
   fi
   
   if command -v open >/dev/null 2>&1; then
-    open "http://localhost:${dashboard_port}"
+    open "${dashboard_url}"
+  else
+    echo "Dashboard: ${dashboard_url}"
   fi
 fi
