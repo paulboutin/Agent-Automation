@@ -1,0 +1,23 @@
+name: Branch Cleanup
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cleanup:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged branch
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Deleting branch: $BRANCH"
+          gh repo delete-branch "$BRANCH" --yes
+        env:
+          GH_TOKEN: ${{ github.token }}
