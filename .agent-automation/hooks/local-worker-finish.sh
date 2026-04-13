@@ -53,15 +53,33 @@ if [[ "${status}" == "DONE" ]]; then
   fi
   git push -u origin "${current_branch}" >/dev/null 2>&1 || true
 
+  pr_body_file="$(agent_automation_make_tempfile "pr-body.")"
+  worker_log_file=""
+  trap 'rm -f "${pr_body_file}"' EXIT
+  if [[ -n "${message_file}" ]]; then
+    for candidate in \
+      "${message_file%.message.txt}.clean.log" \
+      "${message_file%.message.txt}.raw.log"; do
+      if [[ -f "${candidate}" ]]; then
+        worker_log_file="${candidate}"
+        break
+      fi
+    done
+  fi
+  pr_body_args=(--mode autofill --head-ref "${current_branch}" --base-ref "${default_base_branch}")
+  if [[ -n "${worker_log_file}" ]]; then
+    pr_body_args+=(--worker-log "${worker_log_file}")
+  fi
+  agent_automation_render_pr_body "${pr_body_args[@]}" > "${pr_body_file}"
+
   pr_json="$(gh pr list --head "${current_branch}" --json url --limit 1 2>/dev/null || echo '[]')"
   pr_url="$(jq -r '.[0].url // ""' <<< "${pr_json}")"
   if [[ -z "${pr_url}" ]]; then
-    pr_body_file="$(agent_automation_make_tempfile "pr-body.")"
-    trap 'rm -f "${pr_body_file}"' EXIT
-    agent_automation_render_pr_body --mode autofill --head-ref "${current_branch}" > "${pr_body_file}"
     gh pr create --base "${default_base_branch}" --head "${current_branch}" --title "${issue_title}" --body-file "${pr_body_file}" >/dev/null 2>&1 || true
     pr_json="$(gh pr list --head "${current_branch}" --json url --limit 1 2>/dev/null || echo '[]')"
     pr_url="$(jq -r '.[0].url // ""' <<< "${pr_json}")"
+  else
+    gh pr edit "${current_branch}" --body-file "${pr_body_file}" >/dev/null 2>&1 || true
   fi
 
   if [[ -z "${comment_body}" ]]; then
