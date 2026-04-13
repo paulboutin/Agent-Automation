@@ -184,3 +184,39 @@ When worker ends with BLOCKED or NEEDS_INFO:
   1. Remove `active`, add `ready`
   2. Worker re-picks up issue automatically
 - Max 3 restart attempts before marking `agent-failed`
+
+## 17) Feature Branch Workflow
+
+For multi-task features, use the feature branch workflow:
+
+1. **Create feature branch** from development:
+   ```bash
+   git checkout development
+   git checkout -b feature/<name>
+   git push origin feature/<name>
+   ```
+
+2. **Create issues** targeting the feature branch:
+   - Set `base_branch: "feature/<name>"` in issue body
+   - All tasks in the feature should PR to this branch
+
+3. **Parallel task execution**:
+   - Worker branches: `agent/issue-<num>-<lane>`
+   - PR to: `feature/<name>`
+
+4. **Feature QA**:
+   - Create dedicated QA issue for the feature branch
+   - Run comprehensive validation before merging
+
+5. **Merge to development**:
+   - PR from `feature/<name>` -> `development`
+   - Run validation, human review
+
+6. **Promote to main**:
+   - Normal development -> main promotion
+
+Example:
+- `feature/worker-dashboard` created for Worker Dashboard UI
+- Issues #16-#20 target `feature/worker-dashboard`
+- Issue #21 runs QA on the feature branch
+- PR to development after all pass
