@@ -137,7 +137,9 @@ class WorkerSession:
         prompt_file = None
         prompt_match = re.search(r"heartbeat-(\d+)\.json$", heartbeat_file.name)
         if worktree is not None and prompt_match:
-            prompt_candidate = worktree / ".agent-automation" / "prompts" / f"issue-{prompt_match.group(1)}.md"
+            prompt_candidate = (
+                worktree / ".agent-automation" / "prompts" / f"issue-{prompt_match.group(1)}.md"
+            )
             if prompt_candidate.is_file():
                 prompt_file = prompt_candidate
 
@@ -218,9 +220,6 @@ class GitHubCLI:
     def available(self) -> tuple[bool, str | None]:
         if shutil.which("gh") is None:
             return False, "gh CLI not installed"
-        token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-        if not token:
-            return False, "GH_TOKEN or GITHUB_TOKEN not set"
         return True, None
 
     def fetch(self) -> GitHubSnapshot:
@@ -235,11 +234,11 @@ class GitHubCLI:
                     "issue",
                     "list",
                     "--state",
-                    "open",
+                    "all",
                     "--limit",
                     "200",
                     "--json",
-                    "number,title,labels,assignees,url,updatedAt,createdAt",
+                    "number,title,labels,assignees,url,updatedAt,createdAt,state",
                 ]
             )
             prs = self._run_json(
@@ -396,7 +395,9 @@ class WorkerDataAggregator:
         relay_events = _read_json_lines(state_dir / "logs" / "relay-events.jsonl")
         queue = QueueStatus(
             active_issue_numbers=sorted(
-                session.issue_number for session in sessions if session.is_running and session.issue_number
+                session.issue_number
+                for session in sessions
+                if session.is_running and session.issue_number
             ),
             queued_issue_numbers=self._read_issue_numbers(state_dir / "queue" / "ready.json"),
             blocked_issue_numbers=self._read_issue_numbers(state_dir / "queue" / "blocked.json"),
