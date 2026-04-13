@@ -5,6 +5,7 @@ source "./{{COMMON_HOOK_PATH}}"
 
 json_mode="false"
 claim_active="true"
+launch_dashboard="false"
 if [[ "${1:-}" == "--json" ]]; then
   json_mode="true"
   shift
@@ -15,9 +16,14 @@ if [[ "${1:-}" == "--no-claim-active" ]]; then
   shift
 fi
 
+if [[ "${1:-}" == "--dashboard" ]]; then
+  launch_dashboard="true"
+  shift
+fi
+
 issue_number="${1:-}"
 if [[ -z "${issue_number}" ]]; then
-  echo "Usage: $0 [--json] [--no-claim-active] <issue-number>" >&2
+  echo "Usage: $0 [--json] [--no-claim-active] [--dashboard] <issue-number>" >&2
   exit 1
 fi
 
@@ -151,4 +157,21 @@ Prepared issue #${issue_number}
   worktree: ${worktree}
   prompt: ${prompt_file}
 EOF
+fi
+
+if [[ "${launch_dashboard}" == "true" ]]; then
+  dashboard_session="worker-dashboard"
+  if command -v tmux >/dev/null 2>&1; then
+    if tmux has-session -t "${dashboard_session}" 2>/dev/null; then
+      tmux select-window -t "${dashboard_session}:0" 2>/dev/null || true
+      tmux select-pane -t "${dashboard_session}:0" 2>/dev/null || true
+    else
+      tmux new-session -d -s "${dashboard_session}" "python -m worker_dashboard"
+      sleep 1
+    fi
+  elif command -v itermus >/dev/null 2>&1 || command -v iterm2 >/dev/null 2>&1; then
+    osascript -e 'tell application "iTerm" to activate' 2>/dev/null || true
+  else
+    echo "Dashboard not running. Start with: python -m worker_dashboard" >&2
+  fi
 fi
