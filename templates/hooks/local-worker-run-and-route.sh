@@ -92,7 +92,14 @@ run_id="issue-${issue_number}-$(date +%Y%m%d-%H%M%S)"
 raw_log="${run_dir}/${run_id}.raw.log"
 clean_log="${run_dir}/${run_id}.clean.log"
 message_file="${run_dir}/${run_id}.message.txt"
+heartbeat_file="${run_dir}/heartbeat-${issue_number}.json"
 prompt_text="$(cat "${prompt_file}")"
+
+jq -n \
+  --arg branch "${expected_branch}" \
+  --arg issue "${issue_number}" \
+  --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, status: "running"}' > "${heartbeat_file}"
 
 case "${host_name}" in
   codex)
@@ -161,6 +168,13 @@ fi
 
 echo "Detected worker status: ${status}"
 echo "Run log: ${clean_log}"
+
+jq -n \
+  --arg branch "${expected_branch}" \
+  --arg issue "${issue_number}" \
+  --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg status "${status}" \
+  '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, status: $status}' > "${heartbeat_file}"
 
 if [[ "${auto_finish}" == "true" ]]; then
   "./{{AUTOMATION_ROOT}}/hooks/local-worker-finish.sh" "${issue_number}" "${status}" "${message_file}"

@@ -109,6 +109,7 @@ outputs = {
         "relayPoll": f"{automation_root}/hooks/coordinator-relay-poll.sh",
         "mergeLaunchNext": f"{automation_root}/hooks/merge-daemon-launch-next.sh",
         "mergeStatus": f"{automation_root}/hooks/merge-daemon-status.sh",
+        "workerStaleDetect": f"{automation_root}/hooks/worker-stale-detect.sh",
     },
     "packs": {
         "review": {
