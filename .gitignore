@@ -16,3 +16,5 @@ scripts/uv.lock
 scripts/.compile.lock
 Thumbs.db
 .obsidian/
+.agent-automation/prompts/
+.agent-automation/runs/
