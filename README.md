@@ -2,6 +2,78 @@
 
 **Stop manual task assignment and start intelligent agent workflows.** This system transforms how teams work by:
 
+## Prerequisites
+
+- **Python 3.12+** - Required runtime
+- **Git** - Version control
+- **GitHub CLI (`gh`)** - For GitHub operations
+- **pip** - Package manager
+
+## Dependencies
+
+Install project dependencies:
+
+```bash
+pip install -e .
+```
+
+Required packages (see `pyproject.toml`):
+- `claude-agent-sdk>=0.1.29`
+- `flask>=3.0.0`
+- `python-dotenv>=1.0.0`
+- `textual>=0.62.0`
+- `tzdata>=2024.1`
+
+## How to Run the Dashboard
+
+The worker dashboard provides a visual interface for monitoring agent automation.
+
+```bash
+# Run the TUI dashboard
+python -m worker_dashboard
+
+# Or run as a web server
+python -m worker_dashboard --serve
+```
+
+The dashboard displays:
+- Active workers and their current issues
+- Queue status (ready, active, done labels)
+- Worker logs and metrics
+
+**Start a local worker:**
+```bash
+.agent-automation/hooks/local-worker-start.sh <issue-number>
+```
+
+For more worker commands, see `AGENTS.md`.
+
+## Setup Steps
+
+1. **Install dependencies:**
+   ```bash
+   pip install -e .
+   ```
+
+2. **Configure GitHub authentication:**
+   ```bash
+   gh auth login
+   ```
+
+3. **Verify installation:**
+   ```bash
+   ./scripts/validate.sh
+   ```
+
+4. **Start workers** (optional, for local automation):
+   ```bash
+   .agent-automation/hooks/local-worker-launch-tmux.sh --run-agent <issue-number>
+   ```
+
+---
+
+**Stop manual task assignment and start intelligent agent workflows.** This system transforms how teams work by:
+
 - **Automatically assigning the right AI agent** to each GitHub issue based on required skills (role) and domain (lane)
 - **Optimizing costs** by matching task complexity to appropriate AI model tiers (low/standard/high)
 - **Eliminating context switching** - agents work continuously on assigned tickets without human intervention
