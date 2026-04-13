@@ -1,0 +1,297 @@
+{
+  "version": "repo-profile.v2",
+  "repo": {
+    "id": "agent-automation",
+    "name": "Agent Automation"
+  },
+  "platform": {
+    "name": "github"
+  },
+  "branches": {
+    "development": "development",
+    "promotion": [
+      "stage",
+      "main"
+    ],
+    "workerBranchFormat": "agent/issue-{issue_number}-{lane}"
+  },
+  "labels": {
+    "ready": "ready",
+    "active": "active",
+    "needsDecision": "needs-decision",
+    "decisionProposed": "decision-proposed",
+    "agentFailed": "agent-failed",
+    "lanePrefix": "agent:"
+  },
+  "roles": [
+    {
+      "name": "implementer",
+      "defaultCost": "standard"
+    },
+    {
+      "name": "reviewer",
+      "defaultCost": "low"
+    },
+    {
+      "name": "planner",
+      "defaultCost": "low"
+    },
+    {
+      "name": "doc-writer",
+      "defaultCost": "low"
+    },
+    {
+      "name": "qa-verifier",
+      "defaultCost": "standard"
+    },
+    {
+      "name": "coordinator",
+      "defaultCost": "standard"
+    },
+    {
+      "name": "operator",
+      "defaultCost": "high"
+    }
+  ],
+  "lanes": [
+    {
+      "name": "backend",
+      "defaultCost": "standard"
+    },
+    {
+      "name": "frontend",
+      "defaultCost": "standard"
+    },
+    {
+      "name": "infra",
+      "defaultCost": "high"
+    },
+    {
+      "name": "docs",
+      "defaultCost": "low"
+    },
+    {
+      "name": "qa",
+      "defaultCost": "low"
+    }
+  ],
+  "execution": {
+    "defaultHost": "codex",
+    "enabledHosts": [
+      "codex",
+      "claude",
+      "opencode"
+    ],
+    "hostedEnabled": true,
+    "automationRoot": ".agent-automation",
+    "costProfiles": {
+      "low": {
+        "reasoningEffort": "low",
+        "hosts": {
+          "codex": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_LOW",
+            "hostedModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_LOW"
+          },
+          "claude": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CLAUDE_MODEL_LOW"
+          },
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_LOW",
+            "variant": "low"
+          }
+        }
+      },
+      "standard": {
+        "reasoningEffort": "medium",
+        "hosts": {
+          "codex": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_STANDARD",
+            "hostedModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_STANDARD"
+          },
+          "claude": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CLAUDE_MODEL_STANDARD"
+          },
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_STANDARD",
+            "variant": "medium"
+          }
+        }
+      },
+      "high": {
+        "reasoningEffort": "high",
+        "hosts": {
+          "codex": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_HIGH",
+            "hostedModelEnvVar": "AGENT_AUTOMATION_CODEX_MODEL_HIGH"
+          },
+          "claude": {
+            "localModelEnvVar": "AGENT_AUTOMATION_CLAUDE_MODEL_HIGH"
+          },
+          "opencode": {
+            "localModelEnvVar": "AGENT_AUTOMATION_OPENCODE_MODEL_HIGH",
+            "variant": "high"
+          }
+        }
+      }
+    }
+  },
+  "hosts": {
+    "codex": {
+      "displayName": "OpenAI Codex CLI",
+      "cliCommand": "codex",
+      "cliAliases": [
+        "agents"
+      ],
+      "homeRoot": ".codex/agent-automation",
+      "repoRoot": ".agents/agent-automation"
+    },
+    "claude": {
+      "displayName": "Claude Code",
+      "cliCommand": "claude",
+      "cliAliases": [],
+      "homeRoot": ".claude/agent-automation",
+      "repoRoot": ".claude/agent-automation"
+    },
+    "opencode": {
+      "displayName": "OpenCode",
+      "cliCommand": "opencode",
+      "cliAliases": [],
+      "homeRoot": ".config/opencode/agent-automation",
+      "repoRoot": ".opencode/agent-automation"
+    }
+  },
+  "packs": {
+    "automation": true,
+    "governance": true,
+    "review": true,
+    "qa": true
+  },
+  "protocols": {
+    "workerStatus": "worker-status.v1",
+    "workerPrWake": "worker-pr-wake.v1"
+  },
+  "requiredDocs": [
+    "README.md",
+    "docs/QUICKSTART.md",
+    "docs/OPERATING_MODEL.md",
+    "docs/ADOPTION_GUIDE.md",
+    "docs/HOST_MODEL.md",
+    "docs/PACK_MODEL.md",
+    "docs/PROFILE_REFERENCE.md",
+    "docs/OPERATIONS.md"
+  ],
+  "templates": {
+    "issueTask": {
+      "description": "Coordinator intake for one automation worker task.",
+      "introLines": [
+        "Use this template to create one task issue for one automation worker pass.",
+        "Apply exactly one lane label and one role to each task.",
+        "Use base-branch scoping when you need an isolated concurrent workstream."
+      ],
+      "automationScopePlaceholder": "feature-auth-refresh",
+      "outcomePlaceholder": "Implement the change, add tests, update docs.",
+      "scopePlaceholder": "In-scope files..., out-of-scope files...",
+      "validationPlaceholderLines": [
+        "./scripts/validate.sh",
+        "npm test"
+      ],
+      "validationDependenciesPlaceholderLines": [
+        "ci",
+        "#123"
+      ],
+      "blockersPlaceholder": "Any dependency, secret, role, or product decision still pending."
+    },
+    "pullRequest": {
+      "summaryPromptLines": [
+        "What changed?",
+        "Why?",
+        "How was it validated?"
+      ],
+      "workstreamOptions": [
+        "Backend",
+        "Frontend",
+        "Infra / CI",
+        "Docs / DX",
+        "QA / Release"
+      ],
+      "workstreamBranchMap": {
+        "agent/s1-backend": "Backend",
+        "agent/s1-frontend": "Frontend",
+        "agent/s1-infra": "Infra / CI",
+        "agent/s1-docs": "Docs / DX",
+        "agent/s1-qa": "QA / Release"
+      },
+      "checklistItems": [
+        "Checklist created and used during implementation",
+        "Contracts updated (if interface changed)",
+        "Docs updated (if behavior changed)",
+        "Validation/tests run and results reviewed"
+      ],
+      "promotionGateItems": [
+        "Human-tested on development (required for `development -> stage`)",
+        "Runtime smoke gates passed on development (required for `development -> stage`)",
+        "Release readiness checks passed on development (required for `development -> stage`)",
+        "Human-tested on stage (required for `stage -> main`)",
+        "Runtime smoke gates passed on stage (required for `stage -> main`)",
+        "Rollback plan validated for stage -> main (required for `stage -> main`)",
+        "Production operator checkpoint approved for stage -> main (required for `stage -> main`)"
+      ]
+    }
+  },
+  "promotion": {
+    "integrationBranches": [
+      "development",
+      "stage",
+      "main"
+    ],
+    "transitions": [
+      {
+        "target": "stage",
+        "head": "development",
+        "base": "stage",
+        "sourceEnv": "dev",
+        "title": "Promote development -> stage",
+        "summary": "Automated promotion PR from `development` to `stage`.",
+        "defaultWorkstream": "Infra / CI",
+        "checklistItems": [
+          "Release notes reviewed",
+          "CI checks green",
+          "Human-tested on development"
+        ],
+        "requiredPromotionGates": [
+          "Human-tested on development (required for `development -> stage`)",
+          "Runtime smoke gates passed on development (required for `development -> stage`)",
+          "Release readiness checks passed on development (required for `development -> stage`)"
+        ]
+      },
+      {
+        "target": "main",
+        "head": "stage",
+        "base": "main",
+        "sourceEnv": "stage",
+        "title": "Promote stage -> main",
+        "summary": "Automated promotion PR from `stage` to `main`.",
+        "defaultWorkstream": "QA / Release",
+        "checklistItems": [
+          "Release notes reviewed",
+          "CI checks green",
+          "Human-tested on stage"
+        ],
+        "requiredPromotionGates": [
+          "Human-tested on stage (required for `stage -> main`)",
+          "Runtime smoke gates passed on stage (required for `stage -> main`)",
+          "Rollback plan validated for stage -> main (required for `stage -> main`)",
+          "Production operator checkpoint approved for stage -> main (required for `stage -> main`)"
+        ]
+      }
+    ]
+  },
+  "concurrency": {
+    "baseBranchField": "Base branch",
+    "scopeField": "Automation scope",
+    "envHelperScript": "scripts/automation-scope-env.sh"
+  },
+  "operatorProof": {
+    "lane": "qa"
+  }
+}

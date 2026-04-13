@@ -44,7 +44,27 @@ jobs:
             exit 1
           fi
       
-      - name: Validate issue format (if PR touches issues)
-        if: github.event.pull_request.files != ''
+      - name: Validate base branch
         run: |
-          echo "PR validation complete - ready for review"
+          BASE="${{ github.event.pull_request.base.ref }}"
+          HEAD="${{ github.event.pull_request.head.ref }}"
+          
+          if [ "$BASE" = "main" ]; then
+            if [ "$HEAD" != "development" ]; then
+              echo "Error: PR to main must come from development branch"
+              echo "Expected: development <- main"
+              echo "Got: $HEAD <- main"
+              exit 1
+            fi
+          fi
+          
+          if [[ "$HEAD" == feature/* ]] || [[ "$HEAD" == agent/* ]]; then
+            if [ "$BASE" != "development" ]; then
+              echo "Error: Feature/agent branches must target development"
+              echo "Expected: $HEAD <- development"
+              echo "Got: $HEAD <- $BASE"
+              exit 1
+            fi
+          fi
+          
+          echo "Base branch validation passed"
