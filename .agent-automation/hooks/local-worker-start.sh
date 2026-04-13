@@ -161,28 +161,22 @@ fi
 
 if [[ "${launch_dashboard}" == "true" ]]; then
   dashboard_session="worker-dashboard"
+  dashboard_port=8765
   
-  # Try tmux first (if running in tmux)
-  if command -v tmux >/dev/null 2>&1 && [[ -n "${TMUX}" ]]; then
+  if command -v tmux >/dev/null 2>&1; then
     if tmux has-session -t "${dashboard_session}" 2>/dev/null; then
       tmux select-window -t "${dashboard_session}:0" 2>/dev/null || true
       tmux select-pane -t "${dashboard_session}:0" 2>/dev/null || true
     else
-      tmux new-session -d -s "${dashboard_session}" "python -m worker_dashboard"
-      sleep 1
+      tmux new-session -d -s "${dashboard_session}" "python -m worker_dashboard.web"
+      sleep 2
     fi
-  # Try Terminal.app on macOS
-  elif command -v osascript >/dev/null 2>&1; then
-    osascript -e 'tell app "Terminal" to activate' \
-               -e 'tell app "Terminal" to do script "cd \"$(pwd)\" && python -m worker_dashboard" in front window'
-  # Try iTerm2
-  elif command -v iterm2 >/dev/null 2>&1 || command -v iterm >/dev/null 2>&1; then
-    osascript -e 'tell app "iTerm" to activate' \
-               -e 'tell app "iTerm" to create window with default profile' \
-               -e 'tell app "iTerm" to tell first window to execute "cd \"$(pwd)\" && python -m worker_dashboard"'
-  # Fallback - try just running directly in new window
   else
-    open -a Terminal.app python -m worker_dashboard 2>/dev/null || \
-    python -m worker_dashboard &
+    python -m worker_dashboard.web &
+    sleep 2
+  fi
+  
+  if command -v open >/dev/null 2>&1; then
+    open "http://localhost:${dashboard_port}"
   fi
 fi

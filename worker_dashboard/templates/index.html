@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1d23;
+            color: #e4e4e7;
+            min-height: 100vh;
+        }
+        .header {
+            background: #27272a;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #3f3f46;
+        }
+        .header h1 { font-size: 1.25rem; font-weight: 600; }
+        .header .refresh-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .header .refresh-btn:hover { background: #2563eb; }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 1rem;
+            padding: 1rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: #27272a;
+            border-radius: 8px;
+            border: 1px solid #3f3f46;
+            overflow: hidden;
+        }
+        .panel-header {
+            background: #1f1f23;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #3f3f46;
+        }
+        .workers-list { list-style: none; }
+        .worker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #3f3f46;
+            cursor: pointer;
+        }
+        .worker-item:hover { background: #313138; }
+        .worker-item:last-child { border-bottom: none; }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.running { background: #22c55e; }
+        .status-dot.blocked { background: #f59e0b; }
+        .status-dot.queued { background: #6b7280; }
+        .status-dot.failed { background: #ef4444; }
+        .worker-info { flex: 1; min-width: 0; }
+        .worker-info .issue { font-weight: 600; font-size: 0.9rem; }
+        .worker-info .lane { font-size: 0.75rem; color: #a1a1aa; }
+        .status-label {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .status-label.running { background: #22c55e20; color: #22c55e; }
+        .status-label.blocked { background: #f59e0b20; color: #f59e0b; }
+        .status-label.queued { background: #6b728020; color: #9ca3af; }
+        .status-label.failed { background: #ef444420; color: #ef4444; }
+        .queue-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+        .queue-stat {
+            background: #1f1f23;
+            padding: 0.75rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .queue-stat .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .queue-stat .label {
+            font-size: 0.75rem;
+            color: #a1a1aa;
+            margin-top: 0.25rem;
+        }
+        .queue-stat.active .value { color: #22c55e; }
+        .queue-stat.queued .value { color: #3b82f6; }
+        .queue-stat.blocked .value { color: #f59e0b; }
+        .queue-stat.relay .value { color: #a855f7; }
+        .details-panel { padding: 1rem; }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #3f3f46;
+            font-size: 0.875rem;
+        }
+        .detail-row .label { color: #a1a1aa; }
+        .detail-row:last-child { border-bottom: none; }
+        .empty-state {
+            padding: 2rem;
+            text-align: center;
+            color: #71717a;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Worker Dashboard</h1>
+        <button class="refresh-btn" onclick="refreshData()">Refresh</button>
+    </header>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">Workers</div>
+            {% if state.sessions %}
+            <ul class="workers-list">
+                {% for worker in state.sessions %}
+                <li class="worker-item" onclick="selectWorker({{ worker.issue_number }})">
+                    <span class="status-dot {{ worker.status }}"></span>
+                    <div class="worker-info">
+                        <div class="issue">#{{ worker.issue_number }}</div>
+                        <div class="lane">{{ worker.lane or 'unknown' }}</div>
+                    </div>
+                    <span class="status-label {{ worker.status }}">{{ worker.status }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">No active workers</div>
+            {% endif %}
+        </div>
+        <div class="panel">
+            <div class="panel-header">Queue</div>
+            <div class="queue-grid">
+                <div class="queue-stat active">
+                    <div class="value">{{ state.daemon.queue.active_issue_numbers|length }}</div>
+                    <div class="label">Active</div>
+                </div>
+                <div class="queue-stat queued">
+                    <div class="value">{{ state.daemon.queue.queued_issue_numbers|length }}</div>
+                    <div class="label">Queued</div>
+                </div>
+                <div class="queue-stat blocked">
+                    <div class="value">{{ state.daemon.queue.blocked_issue_numbers|length }}</div>
+                    <div class="label">Blocked</div>
+                </div>
+                <div class="queue-stat relay">
+                    <div class="value">{{ state.daemon.queue.relay_inbox_count }}</div>
+                    <div class="label">Inbox</div>
+                </div>
+            </div>
+            <div class="panel-header" style="margin-top: 1rem;">Details</div>
+            <div class="details-panel">
+                <div class="detail-row">
+                    <span class="label">Selected</span>
+                    <span id="selected-worker">Click a worker</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Last refresh</span>
+                    <span>{{ state.refreshed_at.strftime('%H:%M:%S') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function refreshData() {
+            const resp = await fetch('/api/refresh');
+            const data = await resp.json();
+            location.reload();
+        }
+        
+        function selectWorker(issueNumber) {
+            document.getElementById('selected-worker').textContent = '#' + issueNumber;
+        }
+        
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>

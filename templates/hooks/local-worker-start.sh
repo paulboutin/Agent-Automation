@@ -161,17 +161,22 @@ fi
 
 if [[ "${launch_dashboard}" == "true" ]]; then
   dashboard_session="worker-dashboard"
+  dashboard_port=8765
+  
   if command -v tmux >/dev/null 2>&1; then
     if tmux has-session -t "${dashboard_session}" 2>/dev/null; then
       tmux select-window -t "${dashboard_session}:0" 2>/dev/null || true
       tmux select-pane -t "${dashboard_session}:0" 2>/dev/null || true
     else
-      tmux new-session -d -s "${dashboard_session}" "python -m worker_dashboard"
-      sleep 1
+      tmux new-session -d -s "${dashboard_session}" "python -m worker_dashboard.web"
+      sleep 2
     fi
-  elif command -v itermus >/dev/null 2>&1 || command -v iterm2 >/dev/null 2>&1; then
-    osascript -e 'tell application "iTerm" to activate' 2>/dev/null || true
   else
-    echo "Dashboard not running. Start with: python -m worker_dashboard" >&2
+    python -m worker_dashboard.web &
+    sleep 2
+  fi
+  
+  if command -v open >/dev/null 2>&1; then
+    open "http://localhost:${dashboard_port}"
   fi
 fi
