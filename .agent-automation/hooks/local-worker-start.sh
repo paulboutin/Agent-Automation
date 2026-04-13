@@ -173,8 +173,8 @@ if [[ "${launch_dashboard}" == "true" ]]; then
       sleep 2
     fi
   else
-    python -m worker_dashboard.web &
-    sleep 2
+    nohup python -m worker_dashboard.web > /tmp/dashboard.log 2>&1 &
+    sleep 3
   fi
   
   if command -v open >/dev/null 2>&1; then

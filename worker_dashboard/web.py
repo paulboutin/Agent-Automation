@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, Response
+import json
 import sys
 from pathlib import Path
 
@@ -13,12 +14,14 @@ aggregator = WorkerDataAggregator()
 @app.route("/")
 def index():
     state = aggregator.refresh()
-    return render_template("index.html", state=state)
+    issues_by_num = {issue["number"]: issue for issue in state.github.issues}
+    return render_template("index.html", state=state, issues_by_num=issues_by_num)
 
 
 @app.route("/api/refresh")
 def api_refresh():
     state = aggregator.refresh(force=True)
+    issues_by_num = {issue["number"]: issue for issue in state.github.issues}
     return jsonify(
         {
             "sessions": [
@@ -36,6 +39,7 @@ def api_refresh():
                 "queued": state.daemon.queue.queued_issue_numbers,
                 "blocked": state.daemon.queue.blocked_issue_numbers,
             },
+            "issues": issues_by_num,
             "refreshed_at": state.refreshed_at.isoformat(),
         }
     )

@@ -73,9 +73,11 @@
         .status-dot.blocked { background: #f59e0b; }
         .status-dot.queued { background: #6b7280; }
         .status-dot.failed { background: #ef4444; }
+        .status-dot.done { background: #8b5cf6; }
         .worker-info { flex: 1; min-width: 0; }
         .worker-info .issue { font-weight: 600; font-size: 0.9rem; }
-        .worker-info .lane { font-size: 0.75rem; color: #a1a1aa; }
+        .worker-info .title { font-size: 0.75rem; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .worker-info .lane { font-size: 0.7rem; color: #71717a; }
         .status-label {
             font-size: 0.7rem;
             padding: 0.2rem 0.5rem;
@@ -87,6 +89,18 @@
         .status-label.blocked { background: #f59e0b20; color: #f59e0b; }
         .status-label.queued { background: #6b728020; color: #9ca3af; }
         .status-label.failed { background: #ef444420; color: #ef4444; }
+        .status-label.done { background: #8b5cf620; color: #8b5cf6; }
+        .close-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        .close-btn:hover { background: #dc2626; }
         .queue-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -140,10 +154,18 @@
             {% if state.sessions %}
             <ul class="workers-list">
                 {% for worker in state.sessions %}
-                <li class="worker-item" onclick="selectWorker({{ worker.issue_number }})">
+                <li class="worker-item" 
+                    data-issue="{{ worker.issue_number }}" 
+                    data-status="{{ worker.status }}" 
+                    data-lane="{{ worker.lane or '' }}" 
+                    data-branch="{{ worker.branch or '' }}"
+                    onclick="selectWorker(this)">
                     <span class="status-dot {{ worker.status }}"></span>
                     <div class="worker-info">
                         <div class="issue">#{{ worker.issue_number }}</div>
+                        {% if issues_by_num[worker.issue_number] %}
+                        <div class="title">{{ issues_by_num[worker.issue_number].title[:50] }}</div>
+                        {% endif %}
                         <div class="lane">{{ worker.lane or 'unknown' }}</div>
                     </div>
                     <span class="status-label {{ worker.status }}">{{ worker.status }}</span>
@@ -177,25 +199,60 @@
             <div class="panel-header" style="margin-top: 1rem;">Details</div>
             <div class="details-panel">
                 <div class="detail-row">
-                    <span class="label">Selected</span>
-                    <span id="selected-worker">Click a worker</span>
+                    <span class="label">Issue</span>
+                    <span id="detail-issue">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Title</span>
+                    <span id="detail-title">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Status</span>
+                    <span id="detail-status">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Lane</span>
+                    <span id="detail-lane">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Branch</span>
+                    <span id="detail-branch">-</span>
                 </div>
                 <div class="detail-row">
                     <span class="label">Last refresh</span>
                     <span>{{ state.refreshed_at.strftime('%H:%M:%S') }}</span>
                 </div>
+                <button class="close-btn" id="close-btn" onclick="closeWorker()" style="display:none;">Close Issue</button>
             </div>
         </div>
     </div>
     <script>
-        async function refreshData() {
-            const resp = await fetch('/api/refresh');
-            const data = await resp.json();
+        let workersData = {{ issues_by_num | tojson }};
+        
+        function refreshData() {
             location.reload();
         }
         
-        function selectWorker(issueNumber) {
-            document.getElementById('selected-worker').textContent = '#' + issueNumber;
+        function selectWorker(el) {
+            const issueNumber = parseInt(el.dataset.issue);
+            const issue = workersData[String(issueNumber)];
+            
+            document.getElementById('detail-issue').textContent = '#' + issueNumber;
+            document.getElementById('detail-title').textContent = issue ? (issue.title || '-').substring(0, 40) : '-';
+            document.getElementById('detail-status').textContent = el.dataset.status || '-';
+            document.getElementById('detail-lane').textContent = el.dataset.lane || '-';
+            document.getElementById('detail-branch').textContent = el.dataset.branch || '-';
+            
+            const closeBtn = document.getElementById('close-btn');
+            closeBtn.style.display = 'block';
+            closeBtn.dataset.issue = issueNumber;
+        }
+        
+        function closeWorker() {
+            const issueNum = document.getElementById('close-btn').dataset.issue;
+            if (confirm('Close issue #' + issueNum + '?')) {
+                alert('Close functionality not yet implemented');
+            }
         }
         
         setInterval(refreshData, 30000);
