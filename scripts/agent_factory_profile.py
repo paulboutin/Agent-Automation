@@ -80,6 +80,7 @@ def resolve_labels(profile: dict) -> dict[str, str]:
         "needsDecision": (labels.get("needsDecision") or "needs-decision").strip(),
         "decisionProposed": (labels.get("decisionProposed") or "decision-proposed").strip(),
         "agentFailed": (labels.get("agentFailed") or "agent-failed").strip(),
+        "mergeConflict": (labels.get("mergeConflict") or "merge-conflict").strip(),
         "lanePrefix": (labels.get("lanePrefix") or "agent:").strip(),
     }
 
@@ -202,6 +203,7 @@ def resolve_policy(profile: dict, fallback_base_branch: str = "development") -> 
         "needsDecisionLabel": labels["needsDecision"],
         "decisionProposedLabel": labels["decisionProposed"],
         "agentFailedLabel": labels["agentFailed"],
+        "mergeConflictLabel": labels["mergeConflict"],
         "lanePrefix": labels["lanePrefix"],
         "queueStateLabels": queue_state_labels,
         "validationBlockingLabels": queue_state_labels,

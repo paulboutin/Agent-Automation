@@ -12,13 +12,49 @@
     "version": {
       "const": "worker-pr-wake.v1"
     },
+    "repository": {
+      "type": "string"
+    },
     "action": {
+      "type": "string"
+    },
+    "pr_number": {
+      "type": "integer"
+    },
+    "issue_number": {
+      "type": "integer"
+    },
+    "pr_url": {
       "type": "string"
     },
     "head_ref": {
       "type": "string"
     },
     "base_ref": {
+      "type": "string"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "mergeable": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "mergeable_state": {
+      "type": "string"
+    },
+    "merge_conflict": {
+      "type": "boolean"
+    },
+    "conflict_classification": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "sender": {
       "type": "string"
     },
     "requested_reviewer": {

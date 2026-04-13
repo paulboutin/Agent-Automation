@@ -21,6 +21,7 @@
     "needsDecision": "needs-decision",
     "decisionProposed": "decision-proposed",
     "agentFailed": "agent-failed",
+    "mergeConflict": "merge-conflict",
     "lanePrefix": "agent:"
   },
   "roles": [

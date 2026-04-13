@@ -118,5 +118,6 @@ Generic defaults:
 - blocker label: `needs-decision`
 - proposal label: `decision-proposed`
 - failed label: `agent-failed`
+- PR conflict label: `merge-conflict`
 
 These can be changed in the profile as long as the consumer repo remains internally consistent.
