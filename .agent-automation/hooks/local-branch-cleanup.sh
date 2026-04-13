@@ -11,6 +11,8 @@ USAGE
 dry_run=0
 force=0
 
+protected_branches=("main" "development" "stage")
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)
@@ -27,7 +29,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+is_protected() {
+  local branch="$1"
+  for protected in "${protected_branches[@]}"; do
+    if [[ "$branch" == "$protected" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 echo "=== Local Branch Cleanup ==="
+echo "Protected branches: ${protected_branches[*]}"
 
 remote_branches=$(git branch -r --format='%(refname:short)' | grep '^origin/agent/')
 if [[ -z "${remote_branches}" ]]; then
@@ -39,14 +52,21 @@ fi
 
 echo ""
 echo "=== Local Orphaned Branches ==="
-current_branch=$(git branch --show-current)
 
-for branch in $(git branch --format='%(refname:short)'); do
+for branch in $(git branch --format='%(refname:short}'); do
+  if is_protected "$branch"; then
+    echo "Skipped (protected): $branch"
+    continue
+  fi
+  
   if [[ "$branch" == agent/* ]]; then
     merged=0
-    if git branch --contains "$branch" 2>/dev/null | grep -q "development\|main"; then
-      merged=1
-    fi
+    for protected in "${protected_branches[@]}"; do
+      if git branch --contains "$branch" 2>/dev/null | grep -q "$protected"; then
+        merged=1
+        break
+      fi
+    done
     
     if [[ $merged -eq 1 ]]; then
       if [[ $dry_run -eq 1 ]]; then
@@ -59,28 +79,38 @@ for branch in $(git branch --format='%(refname:short)'); do
         fi
       fi
     else
-      echo "Skipped (not merged): $branch"
+      echo "Skipped (not merged to protected): $branch"
     fi
   fi
 done
 
 echo ""
 echo "=== Worktree Cleanup ==="
-worktree_dir="${HOME}/.agent-automation/worktrees"
-if [[ -d "${worktree_dir}" ]]; then
-  for worktree in "${worktree_dir}"/*; do
-    if [[ -d "$worktree" ]]; then
-      branch_name=$(basename "$worktree")
-      if ! git branch -r --format='%(refname:short)' | grep -q "origin/${branch_name}"; then
-        if [[ $dry_run -eq 1 ]]; then
-          echo "[DRY-RUN] Would remove worktree: $worktree"
-        else
-          rm -rf "$worktree" && echo "Removed worktree: $worktree" || true
+worktree_dirs=(
+  "${HOME}/.agent-automation/worktrees"
+  "/tmp/agent-automation-worktrees"
+)
+
+for worktree_dir in "${worktree_dirs[@]}"; do
+  if [[ -d "${worktree_dir}" ]]; then
+    for worktree in "${worktree_dir}"/*; do
+      if [[ -d "$worktree" ]]; then
+        branch_name=$(basename "$worktree")
+        if is_protected "$branch_name"; then
+          echo "Skipped (protected): $worktree"
+          continue
+        fi
+        if ! git branch -r --format='%(refname:short}' | grep -q "origin/${branch_name}"; then
+          if [[ $dry_run -eq 1 ]]; then
+            echo "[DRY-RUN] Would remove worktree: $worktree"
+          else
+            rm -rf "$worktree" && echo "Removed worktree: $worktree" || true
+          fi
         fi
       fi
-    fi
-  done
-fi
+    done
+  fi
+done
 
 echo ""
 echo "Done."
