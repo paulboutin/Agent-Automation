@@ -18,10 +18,9 @@ def index():
     state = aggregator.refresh()
     issues_by_num = {issue["number"]: issue for issue in state.github.issues}
     done_cutoff = 24 * 60 * 60
-    all_sessions = state.daemon.heartbeats
     sessions = [
         s
-        for s in all_sessions
+        for s in state.sessions
         if not (s.status.lower() == "done" and s.age_seconds and s.age_seconds > done_cutoff)
     ]
     return render_template(
@@ -34,7 +33,6 @@ def api_refresh():
     state = aggregator.refresh(force=True)
     issues_by_num = {issue["number"]: issue for issue in state.github.issues}
     done_cutoff = 24 * 60 * 60
-    all_sessions = state.daemon.heartbeats
     sessions = [
         {
             "issue_number": s.issue_number,
@@ -43,7 +41,7 @@ def api_refresh():
             "lane": s.lane,
             "age_seconds": s.age_seconds,
         }
-        for s in all_sessions
+        for s in state.sessions
         if not (s.status.lower() == "done" and s.age_seconds and s.age_seconds > done_cutoff)
     ]
     return jsonify(
