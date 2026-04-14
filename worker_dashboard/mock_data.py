@@ -33,6 +33,18 @@ class WorkerSession:
         }
         return indicators.get(self.status, "?")
 
+    @property
+    def is_open(self) -> bool:
+        return self.status not in ("done", "closed")
+
+    @property
+    def feature_branch(self) -> str:
+        if self.branch.startswith("feature/"):
+            return self.branch
+        if self.branch.startswith("agent/issue-"):
+            return ""
+        return ""
+
 
 def build_mock_sessions() -> list[WorkerSession]:
     return [

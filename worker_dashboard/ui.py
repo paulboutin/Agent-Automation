@@ -71,29 +71,6 @@ else:
             height: 1fr;
         }
 
-        #expanded-details {
-            height: auto;
-            border: solid $accent;
-            margin: 1 0;
-            padding: 1;
-        }
-
-        #session-details {
-            margin-bottom: 1;
-        }
-
-        #log-tail {
-            height: 8;
-            border: solid $text;
-            background: $surface-darken-1;
-            padding: 0 1;
-        }
-
-        #log-tail-label {
-            text-style: bold;
-            text-muted: $text-muted;
-        }
-
         #comment-input {
             margin: 1 0;
         }
@@ -110,21 +87,42 @@ else:
         .tab-copy {
             padding: 1 2;
         }
+
+        .group-header {
+            text-style: bold;
+            padding: 0 1;
+        }
         """
 
         BINDINGS = [("q", "quit", "Quit"), ("r", "refresh", "Refresh")]
 
         selected_worker_id = reactive("")
-        expanded = reactive(False)
+        selected_status_filter = reactive("open")
 
         def __init__(self) -> None:
             super().__init__()
             self.sessions = build_mock_sessions()
 
+        def filter_sessions(
+            self, sessions: list[WorkerSession], status_filter: str
+        ) -> list[WorkerSession]:
+            if status_filter == "open":
+                filtered = [s for s in sessions if s.is_open]
+            else:
+                filtered = [s for s in sessions if not s.is_open]
+            return sorted(filtered, key=lambda s: s.issue_number)
+
+        def group_by_feature(self, sessions: list[WorkerSession]) -> dict[str, list[WorkerSession]]:
+            groups: dict[str, list[WorkerSession]] = {}
+            for session in sessions:
+                key = session.feature_branch if session.feature_branch else "no feature"
+                groups.setdefault(key, []).append(session)
+            return groups
+
         def compose(self) -> ComposeResult:
             yield Header(show_clock=True)
-            with TabbedContent(initial="workers"):
-                with TabPane("Workers", id="workers"):
+            with TabbedContent(initial="open"):
+                with TabPane("Open", id="open"):
                     with Horizontal(id="workspace"):
                         with Vertical(id="workers-panel"):
                             table = DataTable(
@@ -135,18 +133,28 @@ else:
                         with Vertical(id="detail-panel"):
                             yield Static("Worker Details", id="detail-title")
                             yield Static("", id="detail-body")
-                            with Vertical(id="expanded-details"):
-                                yield Static("", id="session-details")
-                                yield Static("", id="log-tail")
                             yield Input(
                                 placeholder="Draft issue comment or operator note",
                                 id="comment-input",
                             )
                             with Horizontal(id="action-row"):
-                                yield Button("Expand", id="expand", variant="primary")
-                                yield Button("Interrupt", id="interrupt", variant="error")
+                                yield Button("Kill", id="kill", variant="error")
                                 yield Button("Restart", id="restart", variant="warning")
-                                yield Button("View Full Log", id="logs")
+                                yield Button("Comment", id="comment", variant="primary")
+                                yield Button("Open Logs", id="logs")
+                with TabPane("Closed", id="closed"):
+                    with Horizontal(id="workspace"):
+                        with Vertical(id="workers-panel"):
+                            closed_table = DataTable(
+                                id="closed-table", zebra_stripes=True, cursor_type="row"
+                            )
+                            closed_table.add_columns(
+                                "Status", "Worker", "Issue", "Lane", "Heartbeat"
+                            )
+                            yield closed_table
+                        with Vertical(id="detail-panel"):
+                            yield Static("Worker Details", id="closed-detail-title")
+                            yield Static("", id="closed-detail-body")
                 with TabPane("Daemon", id="daemon"):
                     yield Static(
                         "Merge daemon is healthy.\n\nQueued issues: 3\nActive workers: 4\nRestarts in last hour: 1",
@@ -168,10 +176,14 @@ else:
             self.notify("Worker list refreshed from mock data.")
 
         def _load_workers(self) -> None:
-            table = self.query_one("#worker-table", DataTable)
-            table.clear(columns=False)
-            for session in self.sessions:
-                table.add_row(
+            all_sessions = build_mock_sessions()
+            open_sessions = self.filter_sessions(all_sessions, "open")
+            closed_sessions = self.filter_sessions(all_sessions, "closed")
+
+            open_table = self.query_one("#worker-table", DataTable)
+            open_table.clear(columns=False)
+            for session in open_sessions:
+                open_table.add_row(
                     f"{session.status_indicator} {session.status}",
                     session.worker_id,
                     f"#{session.issue_number}",
@@ -180,50 +192,33 @@ else:
                     key=session.worker_id,
                 )
 
-            if self.sessions:
-                table.move_cursor(row=0)
-                self.selected_worker_id = self.sessions[0].worker_id
+            closed_table = self.query_one("#closed-table", DataTable)
+            closed_table.clear(columns=False)
+            for session in closed_sessions:
+                closed_table.add_row(
+                    f"{session.status_indicator} {session.status}",
+                    session.worker_id,
+                    f"#{session.issue_number}",
+                    session.lane,
+                    session.last_heartbeat,
+                    key=session.worker_id,
+                )
+
+            if open_sessions:
+                open_table.move_cursor(row=0)
+                self.selected_worker_id = open_sessions[0].worker_id
+                self.selected_status_filter = "open"
                 self._render_selected_session()
 
-        def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-            if event.row_key is None:
-                return
-            self.selected_worker_id = str(event.row_key.value)
-            self._render_selected_session()
-
-        def on_button_pressed(self, event: Button.Pressed) -> None:
-            if not self.selected_session:
-                self.notify("Select a worker session first.", severity="warning")
-                return
-
-            handlers = {
-                "expand": self._toggle_expand,
-                "interrupt": self._interrupt_worker,
-                "restart": self._restart_worker,
-                "logs": self._open_logs,
-            }
-            handler = handlers.get(event.button.id or "")
-            if handler:
-                handler()
-
-        @property
-        def selected_session(self) -> WorkerSession | None:
-            return next(
-                (
-                    session
-                    for session in self.sessions
-                    if session.worker_id == self.selected_worker_id
-                ),
-                None,
-            )
-
         def _render_selected_session(self) -> None:
-            detail = self.query_one("#detail-body", Static)
+            if self.selected_status_filter == "open":
+                detail = self.query_one("#detail-body", Static)
+            else:
+                detail = self.query_one("#closed-detail-body", Static)
+
             session = self.selected_session
             if session is None:
                 detail.update("No worker selected.")
-                self.expanded = False
-                self._render_expanded_details()
                 return
 
             session_fields = asdict(session)
@@ -244,44 +239,49 @@ else:
                 ]
             )
             detail.update(body)
-            self._render_expanded_details()
 
-        def _render_expanded_details(self) -> None:
-            session_details = self.query_one("#session-details", Static)
-            log_tail = self.query_one("#log-tail", Static)
-            session = self.selected_session
-
-            if not self.expanded or session is None:
-                session_details.update("")
-                log_tail.update("")
+        def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+            if event.row_key is None:
                 return
+            self.selected_worker_id = str(event.row_key.value)
+            self._render_selected_session()
 
-            cmd = session.current_command or "(no command)"
-            cwd = session.working_directory or "(none)"
-            session_body = f"Command: {cmd}\nWorking Directory: {cwd}"
+        def on_tabbed_content_tab_changed(self, event: TabbedContent.TabChanged) -> None:
+            if event.tab.id == "open":
+                self.selected_status_filter = "open"
+            elif event.tab.id == "closed":
+                self.selected_status_filter = "closed"
 
-            log_lines = session.log_tail[-20:] if session.log_tail else ["(no log data)"]
-            log_body = "\n".join(log_lines)
-
-            session_details.update(session_body)
-            log_tail.update(log_body)
-
-        def _toggle_expand(self) -> None:
+        def on_button_pressed(self, event: Button.Pressed) -> None:
             if not self.selected_session:
                 self.notify("Select a worker session first.", severity="warning")
                 return
-            self.expanded = not self.expanded
-            self._render_expanded_details()
-            state = "expanded" if self.expanded else "collapsed"
-            self.notify(f"Session details {state}.")
 
-        def _interrupt_worker(self) -> None:
+            handlers = {
+                "kill": self._kill_worker,
+                "restart": self._restart_worker,
+                "comment": self._comment_on_worker,
+                "logs": self._open_logs,
+            }
+            handler = handlers.get(event.button.id or "")
+            if handler:
+                handler()
+
+        @property
+        def selected_session(self) -> WorkerSession | None:
+            all_sessions = build_mock_sessions()
+            for session in all_sessions:
+                if session.worker_id == self.selected_worker_id:
+                    return session
+            return None
+
+        def _kill_worker(self) -> None:
             session = self.selected_session
             assert session is not None
             session.status = "failed"
-            session.summary = "Operator requested interruption from dashboard."
+            session.summary = "Operator requested termination from dashboard."
             self._load_workers()
-            self.notify(f"Interrupt sent to {session.worker_id}.", severity="warning")
+            self.notify(f"Kill requested for {session.worker_id}.", severity="warning")
 
         def _restart_worker(self) -> None:
             session = self.selected_session
