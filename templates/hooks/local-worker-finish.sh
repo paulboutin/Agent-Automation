@@ -115,3 +115,15 @@ if [[ "${status}" == "BLOCKED" || "${status}" == "NEEDS_INFO" ]]; then
 else
   gh issue edit "${issue_number}" --add-label "${failed_label}" >/dev/null 2>&1 || true
 fi
+
+repo_root="$(agent_automation_repo_root)"
+run_dir="${repo_root}/.agent-automation/runs"
+heartbeat_file="${run_dir}/heartbeat-${issue_number}.json"
+if [[ -f "${heartbeat_file}" ]]; then
+  jq -n \
+    --arg branch "${current_branch}" \
+    --arg issue "${issue_number}" \
+    --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg status "${status}" \
+    '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, status: $status}' > "${heartbeat_file}"
+fi
