@@ -111,6 +111,7 @@ class WorkerSession:
     heartbeat_file: Path | None = None
     raw_log_file: Path | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    _cached_log_tail: list[str] | None = None
 
     @property
     def age_seconds(self) -> int | None:
@@ -121,6 +122,19 @@ class WorkerSession:
     @property
     def is_running(self) -> bool:
         return self.status.lower() == "running"
+
+    def get_log_tail(self, lines: int = 20) -> list[str]:
+        if self._cached_log_tail is not None:
+            return self._cached_log_tail
+        if not self.raw_log_file or not self.raw_log_file.is_file():
+            return []
+        try:
+            content = self.raw_log_file.read_text(encoding="utf-8")
+            all_lines = content.splitlines()
+            self._cached_log_tail = all_lines[-lines:] if len(all_lines) > lines else all_lines
+        except OSError:
+            self._cached_log_tail = []
+        return self._cached_log_tail
 
     @classmethod
     def from_heartbeat(

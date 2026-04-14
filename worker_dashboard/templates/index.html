@@ -62,7 +62,59 @@
             cursor: pointer;
         }
         .worker-item:hover { background: #313138; }
+        .worker-item.expanded { background: #27272a; }
         .worker-item:last-child { border-bottom: none; }
+        .worker-details {
+            display: none;
+            padding: 0 1rem 1rem 1rem;
+            background: #1f1f23;
+            border-top: 1px solid #3f3f46;
+        }
+        .worker-item.expanded .worker-details { display: block; }
+        .details-grid {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .details-grid .label { color: #71717a; }
+        .details-grid .value { color: #e4e4e7; }
+        .log-tail {
+            background: #0d0d0f;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.65rem;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #a1a1aa;
+            margin-bottom: 0.75rem;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 0.4rem 0.5rem;
+            border: 1px solid #3f3f46;
+            border-radius: 4px;
+            background: #27272a;
+            color: #e4e4e7;
+            font-size: 0.7rem;
+            cursor: pointer;
+            text-align: center;
+        }
+        .action-btn:hover { background: #313138; }
+        .action-btn.interrupt { border-color: #f59e0b; color: #f59e0b; }
+        .action-btn.interrupt:hover { background: #f59e0b20; }
+        .action-btn.restart { border-color: #22c55e; color: #22c55e; }
+        .action-btn.restart:hover { background: #22c55e20; }
+        .action-btn.view-log { border-color: #3b82f6; color: #3b82f6; }
+        .action-btn.view-log:hover { background: #3b82f620; }
         .status-dot {
             width: 10px;
             height: 10px;
@@ -159,7 +211,7 @@
                     data-status="{{ worker.status }}" 
                     data-lane="{{ worker.lane or '' }}" 
                     data-branch="{{ worker.branch or '' }}"
-                    onclick="selectWorker(this)">
+                    onclick="toggleWorker(this)">
                     <span class="status-dot {{ worker.status }}"></span>
                     <div class="worker-info">
                         <div class="issue">#{{ worker.issue_number }}</div>
@@ -169,6 +221,20 @@
                         <div class="lane">{{ worker.lane or 'unknown' }}</div>
                     </div>
                     <span class="status-label {{ worker.status }}">{{ worker.status }}</span>
+                    <div class="worker-details" id="details-{{ worker.issue_number }}">
+                        <div class="details-grid">
+                            <span class="label">Command:</span>
+                            <span class="value" id="cmd-{{ worker.issue_number }}">-</span>
+                            <span class="label">Directory:</span>
+                            <span class="value" id="dir-{{ worker.issue_number }}">-</span>
+                        </div>
+                        <div class="log-tail" id="log-{{ worker.issue_number }}">Loading...</div>
+                        <div class="action-buttons">
+                            <button class="action-btn interrupt" onclick="interruptWorker(event, {{ worker.issue_number }})">Interrupt</button>
+                            <button class="action-btn restart" onclick="restartWorker(event, {{ worker.issue_number }})">Restart</button>
+                            <button class="action-btn view-log" onclick="viewFullLog(event, {{ worker.issue_number }})">View Full Log</button>
+                        </div>
+                    </div>
                 </li>
                 {% endfor %}
             </ul>
@@ -228,9 +294,68 @@
     </div>
     <script>
         let workersData = {{ issues_by_num | tojson }};
+        let expandedWorker = null;
         
         function refreshData() {
             location.reload();
+        }
+        
+        async function toggleWorker(el) {
+            const issueNumber = parseInt(el.dataset.issue);
+            const detailsEl = document.getElementById('details-' + issueNumber);
+            
+            if (el.classList.contains('expanded')) {
+                el.classList.remove('expanded');
+                expandedWorker = null;
+                return;
+            }
+            
+            document.querySelectorAll('.worker-item.expanded').forEach(item => {
+                item.classList.remove('expanded');
+            });
+            
+            el.classList.add('expanded');
+            expandedWorker = issueNumber;
+            
+            try {
+                const resp = await fetch('/api/worker/' + issueNumber);
+                const data = await resp.json();
+                
+                document.getElementById('cmd-' + issueNumber).textContent = data.current_command || '-';
+                document.getElementById('dir-' + issueNumber).textContent = data.working_directory || '-';
+                
+                const logEl = document.getElementById('log-' + issueNumber);
+                if (data.log_tail && data.log_tail.length > 0) {
+                    logEl.textContent = data.log_tail.join('\n');
+                } else {
+                    logEl.textContent = 'No log available';
+                }
+            } catch (e) {
+                document.getElementById('log-' + issueNumber).textContent = 'Error: ' + e.message;
+            }
+        }
+        
+        async function interruptWorker(event, issueNumber) {
+            event.stopPropagation();
+            if (!confirm('Send SIGINT to interrupt worker?')) return;
+            
+            try {
+                const resp = await fetch('/api/worker/' + issueNumber + '/interrupt', { method: 'POST' });
+                const data = await resp.json();
+                alert(data.message || data.error);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function restartWorker(event, issueNumber) {
+            event.stopPropagation();
+            alert('Restart not implemented - use local worker hooks');
+        }
+        
+        async function viewFullLog(event, issueNumber) {
+            event.stopPropagation();
+            alert('Full log view not implemented');
         }
         
         function selectWorker(el) {
