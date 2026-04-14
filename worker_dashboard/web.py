@@ -7,6 +7,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from data import WorkerDataAggregator, GitHubCLI
+from daemon import (
+    start_daemon,
+    stop_daemon,
+    get_daemon_status,
+    load_settings,
+    save_settings,
+    DaemonSettings,
+)
 
 app = Flask(__name__)
 aggregator = WorkerDataAggregator()
@@ -118,6 +126,66 @@ def api_get_log(issue_number):
             except OSError as e:
                 return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Log not found"}), 404
+
+
+@app.route("/api/daemon/start", methods=["POST"])
+def api_daemon_start():
+    ok, msg = start_daemon()
+    if ok:
+        return jsonify({"success": True, "message": msg})
+    return jsonify({"success": False, "error": msg}), 400
+
+
+@app.route("/api/daemon/stop", methods=["POST"])
+def api_daemon_stop():
+    ok, msg = stop_daemon()
+    if ok:
+        return jsonify({"success": True, "message": msg})
+    return jsonify({"success": False, "error": msg}), 400
+
+
+@app.route("/api/daemon/status", methods=["GET"])
+def api_daemon_status():
+    status = get_daemon_status()
+    return jsonify(
+        {
+            "running": status.running,
+            "pid": status.pid,
+            "started_at": status.started_at,
+            "last_poll": status.last_poll,
+            "settings": {
+                "auto_restart_stuck": status.settings.auto_restart_stuck,
+                "stuck_threshold_minutes": status.settings.stuck_threshold_minutes,
+                "poll_interval_seconds": status.settings.poll_interval_seconds,
+            },
+            "queue_counts": status.queue_counts,
+            "stuck_workers": status.stuck_workers,
+        }
+    )
+
+
+@app.route("/api/daemon/settings", methods=["GET"])
+def api_daemon_settings_get():
+    settings = load_settings()
+    return jsonify(
+        {
+            "auto_restart_stuck": settings.auto_restart_stuck,
+            "stuck_threshold_minutes": settings.stuck_threshold_minutes,
+            "poll_interval_seconds": settings.poll_interval_seconds,
+        }
+    )
+
+
+@app.route("/api/daemon/settings", methods=["POST"])
+def api_daemon_settings_set():
+    data = request.get_json()
+    settings = DaemonSettings(
+        auto_restart_stuck=bool(data.get("auto_restart_stuck", False)),
+        stuck_threshold_minutes=int(data.get("stuck_threshold_minutes", 60)),
+        poll_interval_seconds=int(data.get("poll_interval_seconds", 30)),
+    )
+    save_settings(settings)
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":
