@@ -166,6 +166,12 @@ Prepared issue #${issue_number}
 EOF
 fi
 
+run_worker="false"
+if [[ "${1:-}" == "--run" ]]; then
+  run_worker="true"
+  shift
+fi
+
 if [[ "${launch_dashboard}" == "true" ]]; then
   dashboard_session="worker-dashboard"
   dashboard_port=8765
