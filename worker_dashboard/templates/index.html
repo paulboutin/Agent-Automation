@@ -101,6 +101,19 @@
             margin-top: 0.5rem;
         }
         .close-btn:hover { background: #dc2626; }
+        .dismiss-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            margin-left: 0.5rem;
+        }
+        .dismiss-btn:hover { background: #4b5563; }
+        .button-row { display: flex; }
         .queue-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -151,9 +164,9 @@
     <div class="container">
         <div class="panel">
             <div class="panel-header">Workers</div>
-            {% if state.sessions %}
+            {% if sessions %}
             <ul class="workers-list">
-                {% for worker in state.sessions %}
+                {% for worker in sessions %}
                 <li class="worker-item" 
                     data-issue="{{ worker.issue_number }}" 
                     data-status="{{ worker.status }}" 
@@ -222,7 +235,8 @@
                     <span class="label">Last refresh</span>
                     <span>{{ state.refreshed_at.strftime('%H:%M:%S') }}</span>
                 </div>
-                <button class="close-btn" id="close-btn" onclick="closeWorker()" style="display:none;">Close Issue</button>
+                <button class="close-btn" id="close-btn" onclick="closeIssue()" style="display:none;">Close Issue</button>
+                <button class="dismiss-btn" id="dismiss-btn" onclick="dismissWorker()" style="display:none;">Dismiss</button>
             </div>
         </div>
     </div>
@@ -230,7 +244,27 @@
         let workersData = {{ issues_by_num | tojson }};
         
         function refreshData() {
-            location.reload();
+            const workersList = document.querySelector('.workers-list');
+            if (workersList) {
+                const items = workersList.querySelectorAll('.worker-item');
+                items.forEach(item => {
+                    const issueNum = item.dataset.issue;
+                    item.style.display = isWorkerDismissed(issueNum) ? 'none' : '';
+                });
+            } else {
+                location.reload();
+            }
+        }
+        
+        function isWorkerDismissed(issueNum) {
+            const dismissed = sessionStorage.getItem('dismissed_' + issueNum);
+            if (!dismissed) return false;
+            const age = Date.now() - parseInt(dismissed);
+            if (age > 24 * 60 * 60 * 1000) {
+                sessionStorage.removeItem('dismissed_' + issueNum);
+                return false;
+            }
+            return true;
         }
         
         function selectWorker(el) {
@@ -244,14 +278,39 @@
             document.getElementById('detail-branch').textContent = el.dataset.branch || '-';
             
             const closeBtn = document.getElementById('close-btn');
+            const dismissBtn = document.getElementById('dismiss-btn');
             closeBtn.style.display = 'block';
+            dismissBtn.style.display = 'block';
             closeBtn.dataset.issue = issueNumber;
+            dismissBtn.dataset.issue = issueNumber;
         }
         
-        function closeWorker() {
+        function closeIssue() {
             const issueNum = document.getElementById('close-btn').dataset.issue;
             if (confirm('Close issue #' + issueNum + '?')) {
-                alert('Close functionality not yet implemented');
+                fetch('/api/close-issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ issue_number: parseInt(issueNum) })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert(data.message);
+                        refreshData();
+                    }
+                })
+                .catch(err => alert('Request failed: ' + err));
+            }
+        }
+        
+        function dismissWorker() {
+            const issueNum = document.getElementById('dismiss-btn').dataset.issue;
+            if (confirm('Dismiss worker for issue #' + issueNum + ' from dashboard?')) {
+                sessionStorage.setItem('dismissed_' + issueNum, Date.now());
+                refreshData();
             }
         }
         
