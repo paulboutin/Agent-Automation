@@ -50,9 +50,20 @@ pr_url=""
 if [[ "${status}" == "DONE" ]]; then
   git add -A
   if ! git diff --cached --quiet; then
-    git commit -m "agent: ${issue_title} (#${issue_number})" >/dev/null
+    echo "Committing changes..."
+    git commit -m "agent: ${issue_title} (#${issue_number})" 2>&1 || {
+      echo "ERROR: Failed to commit changes" >&2
+      exit 1
+    }
+  else
+    echo "No changes to commit"
   fi
-  git push -u origin "${current_branch}" >/dev/null 2>&1 || true
+
+  echo "Pushing branch ${current_branch}..."
+  git push -u origin "${current_branch}" 2>&1 || {
+    echo "ERROR: Failed to push branch" >&2
+    exit 1
+  }
 
   pr_body_file="$(agent_automation_make_tempfile "pr-body.")"
   worker_log_file=""
@@ -73,27 +84,48 @@ if [[ "${status}" == "DONE" ]]; then
   fi
   agent_automation_render_pr_body "${pr_body_args[@]}" > "${pr_body_file}"
 
+  echo "Checking for existing PR..."
   pr_json="$(gh pr list --head "${current_branch}" --json url --limit 1 2>/dev/null || echo '[]')"
   pr_url="$(jq -r '.[0].url // ""' <<< "${pr_json}")"
   if [[ -z "${pr_url}" ]]; then
-    gh pr create --base "${default_base_branch}" --head "${current_branch}" --title "${issue_title}" --body-file "${pr_body_file}" >/dev/null 2>&1 || true
+    echo "Creating PR to ${default_base_branch}..."
+    gh pr create --base "${default_base_branch}" --head "${current_branch}" --title "${issue_title}" --body-file "${pr_body_file}" 2>&1 || {
+      echo "ERROR: Failed to create PR" >&2
+      exit 1
+    }
     pr_json="$(gh pr list --head "${current_branch}" --json url --limit 1 2>/dev/null || echo '[]')"
     pr_url="$(jq -r '.[0].url // ""' <<< "${pr_json}")"
   else
-    gh pr edit "${current_branch}" --body-file "${pr_body_file}" >/dev/null 2>&1 || true
+    echo "Updating existing PR..."
+    gh pr edit "${current_branch}" --body-file "${pr_body_file}" 2>&1 || {
+      echo "ERROR: Failed to update PR" >&2
+      exit 1
+    }
   fi
+
+  if [[ -z "${pr_url}" ]]; then
+    echo "ERROR: PR creation succeeded but URL not found" >&2
+    exit 1
+  fi
+
+  echo "PR created/updated: ${pr_url}"
 
   if [[ -z "${comment_body}" ]]; then
     comment_body="$(agent_automation_render_message worker-done.md)"
   fi
-  if [[ -n "${pr_url}" ]]; then
-    comment_body="${comment_body}"$'\n\n'"PR: ${pr_url}"
-  fi
-  gh issue comment "${issue_number}" --body "${comment_body}" >/dev/null
-  gh issue edit "${issue_number}" --remove-label "${active_label}" >/dev/null 2>&1 || true
-  gh issue edit "${issue_number}" --remove-label "${needs_decision_label}" >/dev/null 2>&1 || true
-  gh issue edit "${issue_number}" --remove-label "${failed_label}" >/dev/null 2>&1 || true
-  gh issue edit "${issue_number}" --add-label "${done_label}" >/dev/null 2>&1 || true
+  comment_body="${comment_body}"$'\n\n'"PR: ${pr_url}"
+  gh issue comment "${issue_number}" --body "${comment_body}" 2>&1 || {
+    echo "WARNING: Failed to comment on issue" >&2
+  }
+  gh issue edit "${issue_number}" --remove-label "${active_label}" 2>&1 || {
+    echo "WARNING: Failed to remove active label" >&2
+  }
+  gh issue edit "${issue_number}" --remove-label "${needs_decision_label}" 2>&1 || true
+  gh issue edit "${issue_number}" --remove-label "${failed_label}" 2>&1 || true
+  gh issue edit "${issue_number}" --add-label "${done_label}" 2>&1 || {
+    echo "WARNING: Failed to add done label" >&2
+  }
+  echo "Worker completed successfully. PR: ${pr_url}"
   exit 0
 fi
 
