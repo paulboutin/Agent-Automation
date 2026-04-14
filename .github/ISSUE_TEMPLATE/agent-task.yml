@@ -57,6 +57,30 @@ body:
     validations:
       required: true
   - type: textarea
+    id: ui_changes
+    attributes:
+      label: UI/UX Changes Required
+      description: For UI/UX work, describe exact changes. Include element names, locations, colors, interactions, before/after states.
+      placeholder: "Example for button change:\n- Element: Submit button in top-right of header\n- Before: Blue background, labeled Save\n- After: Green background, labeled Submit\n- Click action: Opens modal dialog"
+    validations:
+      required: false
+  - type: textarea
+    id: not_in_scope
+    attributes:
+      label: NOT in scope
+      description: Explicitly list what NOT to change - helps agent avoid gold-plating.
+      placeholder: "Example:\n- Do NOT change the login page\n- Do NOT add dark mode toggle"
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Exact checklist of what must work. One item per line. Be specific.
+      placeholder: "Example:\n- [ ] Tab Open shows only open issues\n- [ ] Tab Closed shows only closed issues\n- [ ] Clicking row expands accordion below row\n- [ ] Page title reads Agent Dashboard"
+    validations:
+      required: false
+  - type: textarea
     id: scope
     attributes:
       label: Scope and constraints
