@@ -114,6 +114,9 @@ class WorkerSession:
     heartbeat_file: Path | None = None
     raw_log_file: Path | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    current_command: str | None = None
+    output_lines: list[str] = field(default_factory=list)
+    started_at: datetime | None = None
 
     @property
     def age_seconds(self) -> int | None:
@@ -132,6 +135,25 @@ class WorkerSession:
         if self.age_seconds is None:
             return False
         return self.age_seconds >= (STUCK_THRESHOLD_HOURS * 3600)
+
+    @property
+    def runtime_seconds(self) -> int | None:
+        if self.started_at is None:
+            return None
+        return max(0, int((_utc_now() - self.started_at).total_seconds()))
+
+    @property
+    def runtime_display(self) -> str:
+        seconds = self.runtime_seconds
+        if seconds is None:
+            return "-"
+        hours, remainder = divmod(seconds, 3600)
+        minutes, secs = divmod(remainder, 60)
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        if minutes > 0:
+            return f"{minutes}m {secs}s"
+        return f"{secs}s"
 
     @classmethod
     def from_heartbeat(
@@ -163,11 +185,37 @@ class WorkerSession:
             issue_number = None
 
         raw_log_file = None
+        output_lines: list[str] = []
+        current_command: str | None = None
+        started_at: datetime | None = None
+
         if worktree is not None and issue_number is not None:
             run_dir = worktree / ".agent-automation" / "runs"
             candidates = sorted(run_dir.glob(f"issue-{issue_number}-*.clean.log"))
             if candidates:
                 raw_log_file = candidates[-1]
+                try:
+                    log_content = raw_log_file.read_text(encoding="utf-8")
+                    log_lines = log_content.splitlines()
+                    output_lines = log_lines[-20:] if len(log_lines) > 20 else log_lines
+                    for line in log_lines:
+                        if line.startswith("→ "):
+                            current_command = line[2:].strip()
+                            break
+                    if log_lines:
+                        for line in log_lines:
+                            if line.strip():
+                                ts_match = re.match(r"\[(\d{4}-\d{2}-\d{2}T[\d:]+)", line)
+                                if ts_match:
+                                    started_at = _parse_timestamp(ts_match.group(1))
+                                    break
+                        if started_at is None:
+                            first_line = log_lines[0] if log_lines else ""
+                            ts_match = re.match(r"\[(\d{4}-\d{2}-\d{2}T[\d:]+)", first_line)
+                            if ts_match:
+                                started_at = _parse_timestamp(ts_match.group(1))
+                except OSError:
+                    pass
 
         return cls(
             issue_number=issue_number,
@@ -182,6 +230,9 @@ class WorkerSession:
             heartbeat_file=heartbeat_file,
             raw_log_file=raw_log_file,
             metadata=metadata,
+            current_command=current_command,
+            output_lines=output_lines,
+            started_at=started_at,
         )
 
 
