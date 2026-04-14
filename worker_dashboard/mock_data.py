@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
@@ -17,9 +17,11 @@ class WorkerSession:
     last_heartbeat: str
     summary: str
     comment_target: str
+    current_working_dir: str = ""
     current_command: str = ""
-    working_directory: str = ""
-    log_tail: tuple[str, ...] = ()
+    output_lines: list[str] = field(default_factory=list)
+    started_at: str = ""
+    runtime: str = ""
 
     @property
     def status_indicator(self) -> str:
@@ -32,18 +34,6 @@ class WorkerSession:
             "queued": "○",
         }
         return indicators.get(self.status, "?")
-
-    @property
-    def is_open(self) -> bool:
-        return self.status not in ("done", "closed")
-
-    @property
-    def feature_branch(self) -> str:
-        if self.branch.startswith("feature/"):
-            return self.branch
-        if self.branch.startswith("agent/issue-"):
-            return ""
-        return ""
 
 
 def build_mock_sessions() -> list[WorkerSession]:
@@ -59,17 +49,15 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="15s ago",
             summary="Rendering Textual tabs and wiring mock actions.",
             comment_target="#17",
-            current_command="python -m worker_dashboard.ui",
-            working_directory="~/.agent-automation/worktrees/issue-17-frontend",
-            log_tail=(
-                "[12:34:56] Starting worker for issue #17",
-                "[12:34:57] Loaded prompt from .agent-automation/prompts/issue-17.md",
-                "[12:34:58] Initialized execution environment",
-                "[12:35:01] Processing task: Implement dashboard UI",
-                "[12:35:02] Reading existing components...",
-                "[12:35:05] Analyzing codebase patterns",
-                "[12:35:10] Writing new component to ui.py",
-            ),
+            current_working_dir="/tmp/worktrees/issue-17",
+            current_command="git diff HEAD --stat",
+            output_lines=[
+                " src/ui/main.py    | 45 +++----",
+                " src/ui/list.py  | 12 +--",
+                " 2 files changed, 33 insertions, 45 deletions",
+            ],
+            started_at="2026-04-14T16:45:00Z",
+            runtime="15m 23s",
         ),
         WorkerSession(
             worker_id="backend-44",
@@ -82,14 +70,16 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="5m ago",
             summary="Waiting on stuck worker detection implementation.",
             comment_target="#44",
-            current_command="python detect.py --issue 44",
-            working_directory="~/.agent-automation/worktrees/issue-44-backend",
-            log_tail=(
-                "[12:30:00] Starting worker for issue #44",
-                "[12:30:01] Checking heartbeat files...",
-                "[12:30:02] Found 3 active sessions",
-                "[12:30:03] Waiting for worker input...",
-            ),
+            current_working_dir="/tmp/worktrees/issue-44",
+            current_command="",
+            output_lines=[
+                "STATUS: BLOCKED",
+                "QUESTION: What is the stuck threshold?",
+                "OPTION 1: 1 hour",
+                "OPTION 2: 30 minutes",
+            ],
+            started_at="2026-04-14T14:20:00Z",
+            runtime="2h 45m",
         ),
         WorkerSession(
             worker_id="backend-12",
@@ -102,13 +92,15 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="2h 15m ago",
             summary="Worker running >1 hour, may be stuck. Check logs for progress.",
             comment_target="#12",
-            current_command="git rebase -i development",
-            working_directory="~/.agent-automation/worktrees/issue-12-backend",
-            log_tail=(
-                "[10:15:00] Starting rebase for issue #12",
-                "[10:15:01] Fetching latest from development",
-                "[10:15:02] Running rebase...",
-            ),
+            current_working_dir="/tmp/worktrees/issue-12",
+            current_command="./scripts/cleanup.sh --dry-run",
+            output_lines=[
+                "[-processing] Found 12 stale branches",
+                "[processing] Checking refs...",
+                "[processing] Analyzing git history...",
+            ],
+            started_at="2026-04-14T14:50:00Z",
+            runtime="2h 15m",
         ),
         WorkerSession(
             worker_id="qa-21",
@@ -121,9 +113,11 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="not started",
             summary="Queued behind active worker capacity.",
             comment_target="#21",
+            current_working_dir="",
             current_command="",
-            working_directory="",
-            log_tail=(),
+            output_lines=[],
+            started_at="",
+            runtime="",
         ),
         WorkerSession(
             worker_id="infra-8",
@@ -136,13 +130,10 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="8m ago",
             summary="Validation failed after a schema mismatch in generated config.",
             comment_target="#8",
-            current_command="./scripts/validate.sh",
-            working_directory="~/.agent-automation/worktrees/issue-8-infra",
-            log_tail=(
-                "[11:45:00] Starting validation for issue #8",
-                "[11:45:01] Loading schema from contracts/",
-                "[11:45:02] ERROR: Schema validation failed",
-                "[11:45:03] Worker terminated with exit code 1",
-            ),
+            current_working_dir="/tmp/worktrees/issue-8",
+            current_command="python ./scripts/validate.sh",
+            output_lines=["./contracts/foo.schema.json: FAILED", "Error: Invalid JSON in schema"],
+            started_at="2026-04-14T15:10:00Z",
+            runtime="8m 12s",
         ),
     ]
