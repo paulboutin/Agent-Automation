@@ -9,7 +9,16 @@ try:
     from textual.app import App, ComposeResult
     from textual.containers import Horizontal, Vertical
     from textual.reactive import reactive
-    from textual.widgets import Button, DataTable, Footer, Header, Input, Static, TabbedContent, TabPane
+    from textual.widgets import (
+        Button,
+        DataTable,
+        Footer,
+        Header,
+        Input,
+        Static,
+        TabbedContent,
+        TabPane,
+    )
 except ModuleNotFoundError:  # pragma: no cover - exercised indirectly in this environment
     TEXTUAL_AVAILABLE = False
 
@@ -94,7 +103,9 @@ else:
                 with TabPane("Workers", id="workers"):
                     with Horizontal(id="workspace"):
                         with Vertical(id="workers-panel"):
-                            table = DataTable(id="worker-table", zebra_stripes=True, cursor_type="row")
+                            table = DataTable(
+                                id="worker-table", zebra_stripes=True, cursor_type="row"
+                            )
                             table.add_columns("Status", "Worker", "Issue", "Lane", "Heartbeat")
                             yield table
                         with Vertical(id="detail-panel"):
@@ -105,10 +116,9 @@ else:
                                 id="comment-input",
                             )
                             with Horizontal(id="action-row"):
-                                yield Button("Kill", id="kill", variant="error")
+                                yield Button("Interrupt", id="interrupt", variant="error")
                                 yield Button("Restart", id="restart", variant="warning")
-                                yield Button("Comment", id="comment", variant="primary")
-                                yield Button("Open Logs", id="logs")
+                                yield Button("View Full Log", id="logs")
                 with TabPane("Daemon", id="daemon"):
                     yield Static(
                         "Merge daemon is healthy.\n\nQueued issues: 3\nActive workers: 4\nRestarts in last hour: 1",
@@ -159,10 +169,9 @@ else:
                 return
 
             handlers = {
-                "kill": self._kill_worker,
+                "interrupt": self._interrupt_worker,
                 "restart": self._restart_worker,
-                "comment": self._comment_on_worker,
-                "logs": self._open_logs,
+                "logs": self._view_full_log,
             }
             handler = handlers.get(event.button.id or "")
             if handler:
@@ -171,7 +180,11 @@ else:
         @property
         def selected_session(self) -> WorkerSession | None:
             return next(
-                (session for session in self.sessions if session.worker_id == self.selected_worker_id),
+                (
+                    session
+                    for session in self.sessions
+                    if session.worker_id == self.selected_worker_id
+                ),
                 None,
             )
 
@@ -183,6 +196,10 @@ else:
                 return
 
             session_fields = asdict(session)
+            output_text = "\n".join(session_fields.get("output_lines", []))
+            if not output_text:
+                output_text = "(no output yet)"
+
             body = "\n".join(
                 [
                     f"Worker: {session_fields['worker_id']}",
@@ -193,6 +210,13 @@ else:
                     f"Host: {session_fields['host']}",
                     f"Heartbeat: {session_fields['last_heartbeat']}",
                     "",
+                    f"Working dir: {session_fields.get('current_working_dir') or '-'}",
+                    f"Command: {session_fields.get('current_command') or '-'}",
+                    f"Runtime: {session_fields.get('runtime') or '-'}",
+                    "",
+                    "Last 20 lines:",
+                    output_text,
+                    "",
                     "Summary:",
                     session_fields["summary"],
                     "",
@@ -201,13 +225,13 @@ else:
             )
             detail.update(body)
 
-        def _kill_worker(self) -> None:
+        def _interrupt_worker(self) -> None:
             session = self.selected_session
             assert session is not None
             session.status = "failed"
-            session.summary = "Operator requested termination from dashboard."
+            session.summary = "Operator sent SIGINT to interrupt worker from dashboard."
             self._load_workers()
-            self.notify(f"Kill requested for {session.worker_id}.", severity="warning")
+            self.notify(f"Interrupt (SIGINT) sent to {session.worker_id}.", severity="warning")
 
         def _restart_worker(self) -> None:
             session = self.selected_session
@@ -228,7 +252,7 @@ else:
             comment_input.value = ""
             self.notify(f"Comment staged for {session.comment_target}.")
 
-        def _open_logs(self) -> None:
+        def _view_full_log(self) -> None:
             session = self.selected_session
             assert session is not None
-            self.notify(f"Would open logs for {session.worker_id} on {session.host}.")
+            self.notify(f"Opening full log for {session.worker_id}.")
