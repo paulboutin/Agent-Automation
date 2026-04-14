@@ -9,7 +9,16 @@ try:
     from textual.app import App, ComposeResult
     from textual.containers import Horizontal, Vertical
     from textual.reactive import reactive
-    from textual.widgets import Button, DataTable, Footer, Header, Input, Static, TabbedContent, TabPane
+    from textual.widgets import (
+        Button,
+        DataTable,
+        Footer,
+        Header,
+        Input,
+        Static,
+        TabbedContent,
+        TabPane,
+    )
 except ModuleNotFoundError:  # pragma: no cover - exercised indirectly in this environment
     TEXTUAL_AVAILABLE = False
 
@@ -62,6 +71,29 @@ else:
             height: 1fr;
         }
 
+        #expanded-details {
+            height: auto;
+            border: solid $accent;
+            margin: 1 0;
+            padding: 1;
+        }
+
+        #session-details {
+            margin-bottom: 1;
+        }
+
+        #log-tail {
+            height: 8;
+            border: solid $text;
+            background: $surface-darken-1;
+            padding: 0 1;
+        }
+
+        #log-tail-label {
+            text-style: bold;
+            text-muted: $text-muted;
+        }
+
         #comment-input {
             margin: 1 0;
         }
@@ -83,6 +115,7 @@ else:
         BINDINGS = [("q", "quit", "Quit"), ("r", "refresh", "Refresh")]
 
         selected_worker_id = reactive("")
+        expanded = reactive(False)
 
         def __init__(self) -> None:
             super().__init__()
@@ -94,21 +127,26 @@ else:
                 with TabPane("Workers", id="workers"):
                     with Horizontal(id="workspace"):
                         with Vertical(id="workers-panel"):
-                            table = DataTable(id="worker-table", zebra_stripes=True, cursor_type="row")
+                            table = DataTable(
+                                id="worker-table", zebra_stripes=True, cursor_type="row"
+                            )
                             table.add_columns("Status", "Worker", "Issue", "Lane", "Heartbeat")
                             yield table
                         with Vertical(id="detail-panel"):
                             yield Static("Worker Details", id="detail-title")
                             yield Static("", id="detail-body")
+                            with Vertical(id="expanded-details"):
+                                yield Static("", id="session-details")
+                                yield Static("", id="log-tail")
                             yield Input(
                                 placeholder="Draft issue comment or operator note",
                                 id="comment-input",
                             )
                             with Horizontal(id="action-row"):
-                                yield Button("Kill", id="kill", variant="error")
+                                yield Button("Expand", id="expand", variant="primary")
+                                yield Button("Interrupt", id="interrupt", variant="error")
                                 yield Button("Restart", id="restart", variant="warning")
-                                yield Button("Comment", id="comment", variant="primary")
-                                yield Button("Open Logs", id="logs")
+                                yield Button("View Full Log", id="logs")
                 with TabPane("Daemon", id="daemon"):
                     yield Static(
                         "Merge daemon is healthy.\n\nQueued issues: 3\nActive workers: 4\nRestarts in last hour: 1",
@@ -159,9 +197,9 @@ else:
                 return
 
             handlers = {
-                "kill": self._kill_worker,
+                "expand": self._toggle_expand,
+                "interrupt": self._interrupt_worker,
                 "restart": self._restart_worker,
-                "comment": self._comment_on_worker,
                 "logs": self._open_logs,
             }
             handler = handlers.get(event.button.id or "")
@@ -171,7 +209,11 @@ else:
         @property
         def selected_session(self) -> WorkerSession | None:
             return next(
-                (session for session in self.sessions if session.worker_id == self.selected_worker_id),
+                (
+                    session
+                    for session in self.sessions
+                    if session.worker_id == self.selected_worker_id
+                ),
                 None,
             )
 
@@ -180,6 +222,8 @@ else:
             session = self.selected_session
             if session is None:
                 detail.update("No worker selected.")
+                self.expanded = False
+                self._render_expanded_details()
                 return
 
             session_fields = asdict(session)
@@ -200,14 +244,44 @@ else:
                 ]
             )
             detail.update(body)
+            self._render_expanded_details()
 
-        def _kill_worker(self) -> None:
+        def _render_expanded_details(self) -> None:
+            session_details = self.query_one("#session-details", Static)
+            log_tail = self.query_one("#log-tail", Static)
+            session = self.selected_session
+
+            if not self.expanded or session is None:
+                session_details.update("")
+                log_tail.update("")
+                return
+
+            cmd = session.current_command or "(no command)"
+            cwd = session.working_directory or "(none)"
+            session_body = f"Command: {cmd}\nWorking Directory: {cwd}"
+
+            log_lines = session.log_tail[-20:] if session.log_tail else ["(no log data)"]
+            log_body = "\n".join(log_lines)
+
+            session_details.update(session_body)
+            log_tail.update(log_body)
+
+        def _toggle_expand(self) -> None:
+            if not self.selected_session:
+                self.notify("Select a worker session first.", severity="warning")
+                return
+            self.expanded = not self.expanded
+            self._render_expanded_details()
+            state = "expanded" if self.expanded else "collapsed"
+            self.notify(f"Session details {state}.")
+
+        def _interrupt_worker(self) -> None:
             session = self.selected_session
             assert session is not None
             session.status = "failed"
-            session.summary = "Operator requested termination from dashboard."
+            session.summary = "Operator requested interruption from dashboard."
             self._load_workers()
-            self.notify(f"Kill requested for {session.worker_id}.", severity="warning")
+            self.notify(f"Interrupt sent to {session.worker_id}.", severity="warning")
 
         def _restart_worker(self) -> None:
             session = self.selected_session
