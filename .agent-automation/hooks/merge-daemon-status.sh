@@ -17,6 +17,18 @@ format_hours() {
   printf "%dh %02dm" "${hours}" "${minutes}"
 }
 
+format_duration() {
+  local total_seconds="${1:-0}"
+  local hours=$((total_seconds / 3600))
+  local minutes=$(((total_seconds % 3600) / 60))
+  local seconds=$((total_seconds % 60))
+  if [[ ${hours} -gt 0 ]]; then
+    printf "%dh %02dm" "${hours}" "${minutes}"
+  else
+    printf "%dm %02ds" "${minutes}" "${seconds}"
+  fi
+}
+
 print_widget_header() {
   local title="$1"
   echo "[$title]"
@@ -65,6 +77,7 @@ if [[ -d "${run_dir}" ]]; then
     branch=$(jq -r '.branch // empty' "${heartbeat_file}" 2>/dev/null || true)
     last_timestamp=$(jq -r '.timestamp // empty' "${heartbeat_file}" 2>/dev/null || true)
     last_status=$(jq -r '.status // "unknown"' "${heartbeat_file}" 2>/dev/null || true)
+    started_at=$(jq -r '.started_at // empty' "${heartbeat_file}" 2>/dev/null || true)
 
     [[ -n "${issue_number}" && -n "${last_timestamp}" ]] || continue
 
@@ -74,9 +87,22 @@ if [[ -d "${run_dir}" ]]; then
     fi
     [[ "${last_epoch}" != "0" ]] || continue
 
+    started_epoch=0
+    if [[ -n "${started_at}" ]]; then
+      started_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "${started_at}" +%s 2>/dev/null || echo "0")
+      if [[ "${started_epoch}" == "0" ]]; then
+        started_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${started_at}" +%s 2>/dev/null || echo "0")
+      fi
+    fi
+    if [[ "${started_epoch}" == "0" ]]; then
+      started_epoch="${last_epoch}"
+    fi
+
     idle_seconds=$((current_time_unix - last_epoch))
     idle_seconds=$((idle_seconds > 0 ? idle_seconds : 0))
     idle_hours=$((idle_seconds / 3600))
+    duration_seconds=$((current_time_unix - started_epoch))
+    duration_seconds=$((duration_seconds > 0 ? duration_seconds : 0))
 
     severity="ok"
     if [[ "${last_status}" == "running" ]]; then
@@ -89,7 +115,7 @@ if [[ -d "${run_dir}" ]]; then
       severity="finished"
     fi
 
-    heartbeat_rows+="${issue_number}|${branch}|${last_status}|${idle_seconds}|${last_timestamp}|${severity}"$'\n'
+    heartbeat_rows+="${issue_number}|${branch}|${last_status}|${idle_seconds}|${last_timestamp}|${severity}|${started_epoch}|${duration_seconds}"$'\n'
   done
 fi
 
@@ -120,11 +146,11 @@ echo "Active worker PRs: ${active_pr_count}"
 echo
 print_widget_header "Active Workers"
 if [[ "${running_heartbeat_count}" -gt 0 ]]; then
-  while IFS='|' read -r issue_number branch status idle_seconds last_timestamp severity; do
+  while IFS='|' read -r issue_number branch status idle_seconds last_timestamp severity started_epoch duration_seconds; do
     [[ "${status}" == "running" ]] || continue
     echo "- Issue #${issue_number} (${branch})"
-    echo "  heartbeat: ${last_timestamp} | idle $(format_hours "${idle_seconds}")"
-  done < <(printf '%s\n' "${heartbeat_rows}" | sort -t'|' -k4,4n)
+    echo "  duration: $(format_duration "${duration_seconds}")"
+  done < <(printf '%s\n' "${heartbeat_rows}" | sort -t'|' -k8,8n)
 else
   echo "No running worker heartbeats found."
 fi
