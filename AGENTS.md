@@ -9,6 +9,22 @@ This repo provides an agentic automation framework for coordinating AI workers t
 3. **Worker picks up issue**, creates branch, implements, opens PR
 4. **PR validates** automatically, human reviews and merges
 
+## Grouped Issues: Use Feature Branches
+
+When multiple issues are related/dependent, **use feature branches** to group them:
+
+1. **Create feature branch** first from development:
+   ```bash
+   git checkout development
+   git checkout -b feature/<name>
+   git push origin feature/<name>
+   ```
+2. Set `base_branch: "feature/<name>"` in each related issue
+3. Workers PR to the feature branch (not directly to development)
+4. Single PR from feature branch → development after all pass
+
+This avoids the problem of merging 6 individual PRs when they should be one.
+
 ## Issue Labels
 
 | Label | Description |
