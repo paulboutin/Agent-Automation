@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -59,11 +60,15 @@ class WorkerDashboardDataTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (run_dir / "issue-16-20260413-180000.clean.log").write_text("STATUS: DONE\n", encoding="utf-8")
+            (run_dir / "issue-16-20260413-180000.clean.log").write_text(
+                "STATUS: DONE\n", encoding="utf-8"
+            )
             (state_dir / "inbox" / "payload.json").write_text("{}", encoding="utf-8")
             (state_dir / "handled" / "event.json").write_text("{}", encoding="utf-8")
             (state_dir / "conflicts" / "pr-12.md").write_text("# conflict\n", encoding="utf-8")
-            (state_dir / "logs" / "relay-events.jsonl").write_text('{"dedupeKey":"abc"}\n', encoding="utf-8")
+            (state_dir / "logs" / "relay-events.jsonl").write_text(
+                '{"dedupeKey":"abc"}\n', encoding="utf-8"
+            )
             (state_dir / "queue" / "ready.json").write_text("[16, 17]", encoding="utf-8")
             (state_dir / "queue" / "blocked.json").write_text('{"issues":[18]}', encoding="utf-8")
 
@@ -119,6 +124,51 @@ class WorkerDashboardDataTests(unittest.TestCase):
 
             self.assertFalse(snapshot.available)
             self.assertIn("GH_TOKEN", snapshot.error or "")
+
+    def test_worker_session_is_stuck_true_when_running_over_1_hour(self) -> None:
+        from worker_dashboard.data import WorkerSession
+
+        now = datetime.now(timezone.utc)
+        one_hour_ago = now.replace(hour=now.hour - 1)
+
+        session = WorkerSession(
+            issue_number=42,
+            branch="agent/issue-42-backend",
+            status="running",
+            source="test",
+            updated_at=one_hour_ago,
+        )
+        self.assertTrue(session.is_stuck)
+
+    def test_worker_session_is_stuck_false_when_running_under_1_hour(self) -> None:
+        from worker_dashboard.data import WorkerSession
+
+        now = datetime.now(timezone.utc)
+        ten_minutes_ago = now.replace(minute=now.minute - 10)
+
+        session = WorkerSession(
+            issue_number=42,
+            branch="agent/issue-42-backend",
+            status="running",
+            source="test",
+            updated_at=ten_minutes_ago,
+        )
+        self.assertFalse(session.is_stuck)
+
+    def test_worker_session_is_stuck_false_when_not_running(self) -> None:
+        from worker_dashboard.data import WorkerSession
+
+        now = datetime.now(timezone.utc)
+        two_hours_ago = now.replace(hour=now.hour - 2)
+
+        session = WorkerSession(
+            issue_number=42,
+            branch="agent/issue-42-backend",
+            status="done",
+            source="test",
+            updated_at=two_hours_ago,
+        )
+        self.assertFalse(session.is_stuck)
 
 
 if __name__ == "__main__":
