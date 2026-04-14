@@ -97,6 +97,9 @@ def _lane_from_branch(branch: str | None) -> str | None:
     return None
 
 
+STUCK_THRESHOLD_HOURS = 1
+
+
 @dataclass(slots=True)
 class WorkerSession:
     issue_number: int | None
@@ -121,6 +124,14 @@ class WorkerSession:
     @property
     def is_running(self) -> bool:
         return self.status.lower() == "running"
+
+    @property
+    def is_stuck(self) -> bool:
+        if not self.is_running:
+            return False
+        if self.age_seconds is None:
+            return False
+        return self.age_seconds >= (STUCK_THRESHOLD_HOURS * 3600)
 
     @classmethod
     def from_heartbeat(
@@ -393,21 +404,26 @@ class WorkerDataAggregator:
     def _collect_daemon_state(self, sessions: list[WorkerSession]) -> DaemonState:
         state_dir = self.coordinator_state_dir
         relay_events = _read_json_lines(state_dir / "logs" / "relay-events.jsonl")
+        queued_issue_numbers = self._read_issue_numbers(state_dir / "queue" / "ready.json")
         queue = QueueStatus(
             active_issue_numbers=sorted(
                 session.issue_number
                 for session in sessions
                 if session.is_running and session.issue_number
             ),
-            queued_issue_numbers=self._read_issue_numbers(state_dir / "queue" / "ready.json"),
+            queued_issue_numbers=queued_issue_numbers,
             blocked_issue_numbers=self._read_issue_numbers(state_dir / "queue" / "blocked.json"),
             relay_inbox_count=self._count_children(state_dir / "inbox", suffix=".json"),
             handled_events_count=self._count_children(state_dir / "handled", suffix=".json"),
             conflict_count=self._count_children(state_dir / "conflicts", suffix=".md"),
         )
+
+        queued_sessions = self._create_queued_sessions(queued_issue_numbers, sessions)
+        all_sessions = sessions + queued_sessions
+
         return DaemonState(
             state_dir=state_dir,
-            heartbeats=sessions,
+            heartbeats=all_sessions,
             queue=queue,
             relay_events=relay_events,
             metadata={
@@ -415,6 +431,33 @@ class WorkerDataAggregator:
                 "relay_log_path": str(state_dir / "logs" / "relay-events.jsonl"),
             },
         )
+
+    def _create_queued_sessions(
+        self, queued_issue_numbers: list[int], active_sessions: list[WorkerSession]
+    ) -> list[WorkerSession]:
+        active_issue_set = {
+            session.issue_number for session in active_sessions if session.issue_number is not None
+        }
+        queued_sessions: list[WorkerSession] = []
+        for issue_num in queued_issue_numbers:
+            if issue_num in active_issue_set:
+                continue
+            session = WorkerSession(
+                issue_number=issue_num,
+                branch=None,
+                status="queued",
+                source="queue",
+                updated_at=None,
+                lane=None,
+                worktree=None,
+                repo_root=self.repo_root,
+                prompt_file=None,
+                heartbeat_file=None,
+                raw_log_file=None,
+                metadata={},
+            )
+            queued_sessions.append(session)
+        return queued_sessions
 
     def _count_children(self, path: Path, *, suffix: str) -> int:
         if not path.is_dir():
