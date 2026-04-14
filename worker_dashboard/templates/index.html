@@ -21,7 +21,21 @@
             border-bottom: 1px solid #3f3f46;
         }
         .header h1 { font-size: 1.25rem; font-weight: 600; }
-        .header .refresh-btn {
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .daemon-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .status-dot.running { background: #22c55e; }
+        .status-dot.stopped { background: #6b7280; }
+        .header-btn {
             background: #3b82f6;
             color: white;
             border: none;
@@ -30,7 +44,10 @@
             cursor: pointer;
             font-size: 0.875rem;
         }
-        .header .refresh-btn:hover { background: #2563eb; }
+        .header-btn:hover { background: #2563eb; }
+        .header-btn.stop { background: #ef4444; }
+        .header-btn.stop:hover { background: #dc2626; }
+        .header-btn.stopped { background: #6b7280; }
         .container {
             display: grid;
             grid-template-columns: 1fr 350px;
@@ -51,6 +68,9 @@
             font-weight: 600;
             font-size: 0.875rem;
             border-bottom: 1px solid #3f3f46;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .workers-list { list-style: none; }
         .worker-item {
@@ -63,6 +83,10 @@
         }
         .worker-item:hover { background: #313138; }
         .worker-item:last-child { border-bottom: none; }
+        .worker-item.stuck {
+            background: #ef444420;
+            border-left: 3px solid #ef4444;
+        }
         .status-dot {
             width: 10px;
             height: 10px;
@@ -90,6 +114,7 @@
         .status-label.queued { background: #6b728020; color: #9ca3af; }
         .status-label.failed { background: #ef444420; color: #ef4444; }
         .status-label.done { background: #8b5cf620; color: #8b5cf6; }
+        .status-label.stuck { background: #ef444420; color: #ef4444; }
         .close-btn {
             background: #ef4444;
             color: white;
@@ -116,7 +141,7 @@
         .button-row { display: flex; }
         .queue-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 0.5rem;
             padding: 1rem;
         }
@@ -138,7 +163,7 @@
         .queue-stat.active .value { color: #22c55e; }
         .queue-stat.queued .value { color: #3b82f6; }
         .queue-stat.blocked .value { color: #f59e0b; }
-        .queue-stat.relay .value { color: #a855f7; }
+        .queue-stat.done .value { color: #8b5cf6; }
         .details-panel { padding: 1rem; }
         .detail-row {
             display: flex;
@@ -154,16 +179,113 @@
             text-align: center;
             color: #71717a;
         }
+        .settings-panel { padding: 1rem; }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #3f3f46;
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 0.875rem; }
+        .setting-desc { font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #3f3f46;
+            transition: 0.2s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: #22c55e;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        .number-input {
+            background: #1f1f23;
+            border: 1px solid #3f3f46;
+            color: #e4e4e7;
+            padding: 0.5rem;
+            border-radius: 6px;
+            width: 80px;
+            text-align: center;
+        }
+        .number-input:focus { outline: none; border-color: #3b82f6; }
+        .save-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+        .save-btn:hover { background: #16a34a; }
+        .stuck-warning {
+            background: #ef444420;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin: 0.5rem 1rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+        .stuck-warning.show { display: block; }
     </style>
 </head>
 <body>
     <header class="header">
-        <h1>Worker Dashboard</h1>
-        <button class="refresh-btn" onclick="refreshData()">Refresh</button>
+        <div class="header-left">
+            <h1>Worker Dashboard</h1>
+            <div class="daemon-status">
+                <span class="status-dot stopped" id="daemon-status-dot"></span>
+                <span id="daemon-status-text">Stopped</span>
+            </div>
+        </div>
+        <div>
+            <button class="header-btn" id="daemon-toggle-btn" onclick="toggleDaemon()">Start Daemon</button>
+            <button class="header-btn" onclick="refreshData()">Refresh</button>
+        </div>
     </header>
     <div class="container">
         <div class="panel">
-            <div class="panel-header">Workers</div>
+            <div class="panel-header">
+                Workers
+                <span id="worker-count" style="font-weight: normal; color: #a1a1aa;">0</span>
+            </div>
+            <div class="stuck-warning" id="stuck-warning">
+                ⚠️ <span id="stuck-count">0</span> stuck worker(s) detected - 
+                <a href="#" onclick="showSettings()" style="color: #3b82f6;">configure auto-restart</a>
+            </div>
             {% if sessions %}
             <ul class="workers-list">
                 {% for worker in sessions %}
@@ -193,20 +315,45 @@
             <div class="panel-header">Queue</div>
             <div class="queue-grid">
                 <div class="queue-stat active">
-                    <div class="value">{{ state.daemon.queue.active_issue_numbers|length }}</div>
+                    <div class="value" id="queue-active">0</div>
                     <div class="label">Active</div>
                 </div>
                 <div class="queue-stat queued">
-                    <div class="value">{{ state.daemon.queue.queued_issue_numbers|length }}</div>
+                    <div class="value" id="queue-queued">0</div>
                     <div class="label">Queued</div>
                 </div>
                 <div class="queue-stat blocked">
-                    <div class="value">{{ state.daemon.queue.blocked_issue_numbers|length }}</div>
+                    <div class="value" id="queue-blocked">0</div>
                     <div class="label">Blocked</div>
                 </div>
-                <div class="queue-stat relay">
-                    <div class="value">{{ state.daemon.queue.relay_inbox_count }}</div>
-                    <div class="label">Inbox</div>
+                <div class="queue-stat done">
+                    <div class="value" id="queue-done">0</div>
+                    <div class="label">Done</div>
+                </div>
+            </div>
+            <div class="panel-header" style="margin-top: 1rem;">Settings</div>
+            <div class="settings-panel">
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Auto-restart stuck workers</div>
+                        <div class="setting-desc">Automatically restart workers stuck for threshold time</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-restart-toggle" onchange="saveSettings()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Stuck threshold (minutes)</div>
+                    </div>
+                    <input type="number" class="number-input" id="stuck-threshold" min="1" value="60" onchange="saveSettings()">
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Poll interval (seconds)</div>
+                    </div>
+                    <input type="number" class="number-input" id="poll-interval" min="5" value="30" onchange="saveSettings()">
                 </div>
             </div>
             <div class="panel-header" style="margin-top: 1rem;">Details</div>
@@ -245,7 +392,7 @@
                 </div>
                 <div class="detail-row">
                     <span class="label">Last refresh</span>
-                    <span>{{ state.refreshed_at.strftime('%H:%M:%S') }}</span>
+                    <span id="detail-refresh">-</span>
                 </div>
                 <div class="detail-row" style="flex-direction: column;">
                     <span class="label">Log Tail</span>
@@ -259,6 +406,81 @@
     <script>
         let workersData = {{ issues_by_num | tojson }};
         let sessionsCache = {};
+        let daemonRunning = false;
+        
+        function loadSettings() {
+            const stored = localStorage.getItem('daemon-settings');
+            if (stored) {
+                const s = JSON.parse(stored);
+                document.getElementById('auto-restart-toggle').checked = s.auto_restart_stuck;
+                document.getElementById('stuck-threshold').value = s.stuck_threshold_minutes;
+                document.getElementById('poll-interval').value = s.poll_interval_seconds;
+            }
+        }
+        
+        function saveSettings() {
+            const s = {
+                auto_restart_stuck: document.getElementById('auto-restart-toggle').checked,
+                stuck_threshold_minutes: parseInt(document.getElementById('stuck-threshold').value) || 60,
+                poll_interval_seconds: parseInt(document.getElementById('poll-interval').value) || 30,
+            };
+            localStorage.setItem('daemon-settings', JSON.stringify(s));
+            fetch('/api/daemon/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(s)
+            }).catch(err => console.error('Settings save error:', err));
+        }
+        
+        function updateDaemonStatus(status) {
+            daemonRunning = status.running;
+            const dot = document.getElementById('daemon-status-dot');
+            const text = document.getElementById('daemon-status-text');
+            const btn = document.getElementById('daemon-toggle-btn');
+            
+            if (status.running) {
+                dot.className = 'status-dot running';
+                text.textContent = 'Running';
+                btn.textContent = 'Stop Daemon';
+                btn.className = 'header-btn stop';
+            } else {
+                dot.className = 'status-dot stopped';
+                text.textContent = 'Stopped';
+                btn.textContent = 'Start Daemon';
+                btn.className = 'header-btn';
+            }
+            
+            if (status.settings) {
+                document.getElementById('auto-restart-toggle').checked = status.settings.auto_restart_stuck;
+                document.getElementById('stuck-threshold').value = status.settings.stuck_threshold_minutes;
+                document.getElementById('poll-interval').value = status.settings.poll_interval_seconds;
+            }
+        }
+        
+        function toggleDaemon() {
+            const btn = document.getElementById('daemon-toggle-btn');
+            if (daemonRunning) {
+                fetch('/api/daemon/stop', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) alert(data.error);
+                        checkDaemonStatus();
+                    });
+            } else {
+                fetch('/api/daemon/start', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) alert(data.error);
+                        checkDaemonStatus();
+                    });
+            }
+        }
+        
+        function checkDaemonStatus() {
+            fetch('/api/daemon/status')
+                .then(res => res.json())
+                .then(data => updateDaemonStatus(data));
+        }
         
         function refreshData() {
             fetch('/api/refresh')
@@ -268,42 +490,67 @@
                     data.sessions.forEach(s => {
                         sessionsCache[s.issue_number] = s;
                     });
-                    refreshUI();
+                    updateQueueStats(data.queue);
+                    updateWorkersList(data.sessions);
+                    updateStuckWarning(data.stuck_workers || []);
+                    document.getElementById('detail-refresh').textContent = new Date().toLocaleTimeString();
                 })
                 .catch(err => console.error('Refresh error:', err));
             
-            const workersList = document.querySelector('.workers-list');
-            if (workersList) {
-                const items = workersList.querySelectorAll('.worker-item');
-                items.forEach(item => {
-                    const issueNum = item.dataset.issue;
-                    item.style.display = isWorkerDismissed(issueNum) ? 'none' : '';
-                });
+            checkDaemonStatus();
+        }
+        
+        function updateQueueStats(queue) {
+            document.getElementById('queue-active').textContent = queue.active ? queue.active.length : 0;
+            document.getElementById('queue-queued').textContent = queue.queued ? queue.queued.length : 0;
+            document.getElementById('queue-blocked').textContent = queue.blocked ? queue.blocked.length : 0;
+            document.getElementById('queue-done').textContent = queue.done || 0;
+        }
+        
+        function updateWorkersList(sessions) {
+            const list = document.querySelector('.workers-list');
+            if (!list) return;
+            
+            document.getElementById('worker-count').textContent = sessions.length;
+            
+            const stuck = new Set();
+            sessions.forEach(s => {
+                if (s.status === 'running' && s.age_seconds > 3600) {
+                    stuck.add(s.issue_number);
+                }
+            });
+            
+            const items = list.querySelectorAll('.worker-item');
+            items.forEach(item => {
+                const issueNum = parseInt(item.dataset.issue);
+                if (stuck.has(issueNum)) {
+                    item.classList.add('stuck');
+                    const label = item.querySelector('.status-label');
+                    if (label) {
+                        label.textContent = 'STUCK';
+                        label.className = 'status-label stuck';
+                    }
+                } else {
+                    item.classList.remove('stuck');
+                }
+            });
+        }
+        
+        function updateStuckWarning(stuckWorkers) {
+            const warning = document.getElementById('stuck-warning');
+            const countEl = document.getElementById('stuck-count');
+            if (stuckWorkers && stuckWorkers.length > 0) {
+                countEl.textContent = stuckWorkers.length;
+                warning.classList.add('show');
             } else {
-                location.reload();
+                warning.classList.remove('show');
             }
         }
         
-        function refreshUI() {
-            const workersList = document.querySelector('.workers-list');
-            if (workersList) {
-                const items = workersList.querySelectorAll('.worker-item');
-                items.forEach(item => {
-                    const issueNum = item.dataset.issue;
-                    item.style.display = isWorkerDismissed(issueNum) ? 'none' : '';
-                });
-            }
-        }
-        
-        function isWorkerDismissed(issueNum) {
-            const dismissed = sessionStorage.getItem('dismissed_' + issueNum);
-            if (!dismissed) return false;
-            const age = Date.now() - parseInt(dismissed);
-            if (age > 24 * 60 * 60 * 1000) {
-                sessionStorage.removeItem('dismissed_' + issueNum);
-                return false;
-            }
-            return true;
+        function showSettings() {
+            document.getElementById('auto-restart-toggle').checked = true;
+            saveSettings();
+            alert('Auto-restart enabled. Daemon will automatically restart stuck workers.');
         }
         
         function selectWorker(el) {
@@ -372,7 +619,21 @@
             }
         }
         
-        setInterval(refreshData, 30000);
+        function isWorkerDismissed(issueNum) {
+            const dismissed = sessionStorage.getItem('dismissed_' + issueNum);
+            if (!dismissed) return false;
+            const age = Date.now() - parseInt(dismissed);
+            if (age > 24 * 60 * 60 * 1000) {
+                sessionStorage.removeItem('dismissed_' + issueNum);
+                return false;
+            }
+            return true;
+        }
+        
+        loadSettings();
+        checkDaemonStatus();
+        
+        setInterval(refreshData, 15000);
     </script>
 </body>
 </html>
