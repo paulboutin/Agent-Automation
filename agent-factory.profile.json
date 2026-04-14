@@ -18,6 +18,7 @@
   "labels": {
     "ready": "ready",
     "active": "active",
+    "done": "done",
     "needsDecision": "needs-decision",
     "decisionProposed": "decision-proposed",
     "agentFailed": "agent-failed",

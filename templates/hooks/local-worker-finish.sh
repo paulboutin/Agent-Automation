@@ -31,6 +31,7 @@ cd "${repo_root}"
 policy_json="$(agent_automation_resolve_policy_json)"
 ready_label="$(jq -r '.readyLabel' <<< "${policy_json}")"
 active_label="$(jq -r '.activeLabel' <<< "${policy_json}")"
+done_label="$(jq -r '.doneLabel' <<< "${policy_json}")"
 needs_decision_label="$(jq -r '.needsDecisionLabel' <<< "${policy_json}")"
 decision_proposed_label="$(jq -r '.decisionProposedLabel' <<< "${policy_json}")"
 failed_label="$(jq -r '.agentFailedLabel' <<< "${policy_json}")"
@@ -92,6 +93,7 @@ if [[ "${status}" == "DONE" ]]; then
   gh issue edit "${issue_number}" --remove-label "${active_label}" >/dev/null 2>&1 || true
   gh issue edit "${issue_number}" --remove-label "${needs_decision_label}" >/dev/null 2>&1 || true
   gh issue edit "${issue_number}" --remove-label "${failed_label}" >/dev/null 2>&1 || true
+  gh issue edit "${issue_number}" --add-label "${done_label}" >/dev/null 2>&1 || true
   exit 0
 fi
 
@@ -107,12 +109,12 @@ if [[ -z "${comment_body}" ]]; then
 fi
 
 gh issue comment "${issue_number}" --body "${comment_body}" >/dev/null
-gh issue edit "${issue_number}" --remove-label "${active_label}" >/dev/null 2>&1 || true
 
 if [[ "${status}" == "BLOCKED" || "${status}" == "NEEDS_INFO" ]]; then
   gh issue edit "${issue_number}" --add-label "${needs_decision_label}" >/dev/null 2>&1 || true
   gh issue edit "${issue_number}" --remove-label "${decision_proposed_label}" >/dev/null 2>&1 || true
 else
+  gh issue edit "${issue_number}" --remove-label "${active_label}" >/dev/null 2>&1 || true
   gh issue edit "${issue_number}" --add-label "${failed_label}" >/dev/null 2>&1 || true
 fi
 
