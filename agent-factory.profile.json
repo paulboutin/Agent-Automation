@@ -22,6 +22,8 @@
     "needsDecision": "needs-decision",
     "decisionProposed": "decision-proposed",
     "agentFailed": "agent-failed",
+    "needsQa": "needs-qa",
+    "qaPassed": "qa-passed",
     "lanePrefix": "agent:"
   },
   "roles": [
