@@ -58,10 +58,19 @@ jobs:
             fi
           fi
           
-          if [[ "$HEAD" == feature/* ]] || [[ "$HEAD" == agent/* ]]; then
-            if [ "$BASE" != "development" ]; then
-              echo "Error: Feature/agent branches must target development"
-              echo "Expected: $HEAD <- development"
+          if [[ "$HEAD" == feature/* ]]; then
+            if [[ "$BASE" != "development" ]] && [[ "$BASE" != feature/* ]]; then
+              echo "Error: Feature branches must target development or another feature branch"
+              echo "Expected: $HEAD <- development|feature/*"
+              echo "Got: $HEAD <- $BASE"
+              exit 1
+            fi
+          fi
+          
+          if [[ "$HEAD" == agent/* ]]; then
+            if [[ "$BASE" != "development" ]] && [[ "$BASE" != feature/* ]]; then
+              echo "Error: Agent branches must target development or a feature branch"
+              echo "Expected: $HEAD <- development|feature/*"
               echo "Got: $HEAD <- $BASE"
               exit 1
             fi
