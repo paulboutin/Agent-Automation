@@ -232,8 +232,24 @@
                     <span id="detail-branch">-</span>
                 </div>
                 <div class="detail-row">
+                    <span class="label">Worktree</span>
+                    <span id="detail-worktree">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Started</span>
+                    <span id="detail-started">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Current Cmd</span>
+                    <span id="detail-command">-</span>
+                </div>
+                <div class="detail-row">
                     <span class="label">Last refresh</span>
                     <span>{{ state.refreshed_at.strftime('%H:%M:%S') }}</span>
+                </div>
+                <div class="detail-row" style="flex-direction: column;">
+                    <span class="label">Log Tail</span>
+                    <pre id="detail-log" style="background: #1f1f23; padding: 0.5rem; border-radius: 4px; font-size: 0.75rem; overflow-x: auto; margin-top: 0.25rem;">-</pre>
                 </div>
                 <button class="close-btn" id="close-btn" onclick="closeIssue()" style="display:none;">Close Issue</button>
                 <button class="dismiss-btn" id="dismiss-btn" onclick="dismissWorker()" style="display:none;">Dismiss</button>
@@ -242,8 +258,20 @@
     </div>
     <script>
         let workersData = {{ issues_by_num | tojson }};
+        let sessionsCache = {};
         
         function refreshData() {
+            fetch('/api/refresh')
+                .then(res => res.json())
+                .then(data => {
+                    sessionsCache = {};
+                    data.sessions.forEach(s => {
+                        sessionsCache[s.issue_number] = s;
+                    });
+                    refreshUI();
+                })
+                .catch(err => console.error('Refresh error:', err));
+            
             const workersList = document.querySelector('.workers-list');
             if (workersList) {
                 const items = workersList.querySelectorAll('.worker-item');
@@ -253,6 +281,17 @@
                 });
             } else {
                 location.reload();
+            }
+        }
+        
+        function refreshUI() {
+            const workersList = document.querySelector('.workers-list');
+            if (workersList) {
+                const items = workersList.querySelectorAll('.worker-item');
+                items.forEach(item => {
+                    const issueNum = item.dataset.issue;
+                    item.style.display = isWorkerDismissed(issueNum) ? 'none' : '';
+                });
             }
         }
         
@@ -270,12 +309,31 @@
         function selectWorker(el) {
             const issueNumber = parseInt(el.dataset.issue);
             const issue = workersData[String(issueNumber)];
+            const session = sessionsCache[issueNumber] || {};
             
             document.getElementById('detail-issue').textContent = '#' + issueNumber;
             document.getElementById('detail-title').textContent = issue ? (issue.title || '-').substring(0, 40) : '-';
             document.getElementById('detail-status').textContent = el.dataset.status || '-';
             document.getElementById('detail-lane').textContent = el.dataset.lane || '-';
             document.getElementById('detail-branch').textContent = el.dataset.branch || '-';
+            document.getElementById('detail-worktree').textContent = session.worktree || '-';
+            
+            const started = session.started_at;
+            if (started) {
+                const d = new Date(started);
+                document.getElementById('detail-started').textContent = d.toLocaleTimeString();
+            } else {
+                document.getElementById('detail-started').textContent = '-';
+            }
+            
+            document.getElementById('detail-command').textContent = session.current_command || '-';
+            
+            const logEl = document.getElementById('detail-log');
+            if (session.output_lines && session.output_lines.length > 0) {
+                logEl.textContent = session.output_lines.join('\n');
+            } else {
+                logEl.textContent = '-';
+            }
             
             const closeBtn = document.getElementById('close-btn');
             const dismissBtn = document.getElementById('dismiss-btn');
