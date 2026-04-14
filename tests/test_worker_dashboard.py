@@ -11,6 +11,7 @@ class WorkerDashboardTests(unittest.TestCase):
         self.assertGreaterEqual(len(sessions), 4)
         self.assertEqual(sessions[0].issue_number, 17)
         self.assertIn("running", {session.status for session in sessions})
+        self.assertIn("stuck", {session.status for session in sessions})
         self.assertIn("blocked", {session.status for session in sessions})
 
     def test_dashboard_app_is_importable(self) -> None:

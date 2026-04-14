@@ -97,6 +97,9 @@ def _lane_from_branch(branch: str | None) -> str | None:
     return None
 
 
+STUCK_THRESHOLD_HOURS = 1
+
+
 @dataclass(slots=True)
 class WorkerSession:
     issue_number: int | None
@@ -121,6 +124,14 @@ class WorkerSession:
     @property
     def is_running(self) -> bool:
         return self.status.lower() == "running"
+
+    @property
+    def is_stuck(self) -> bool:
+        if not self.is_running:
+            return False
+        if self.age_seconds is None:
+            return False
+        return self.age_seconds >= (STUCK_THRESHOLD_HOURS * 3600)
 
     @classmethod
     def from_heartbeat(
