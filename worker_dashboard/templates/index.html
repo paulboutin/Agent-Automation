@@ -87,6 +87,139 @@
             background: #ef444420;
             border-left: 3px solid #ef4444;
         }
+        .worker-item {
+            position: relative;
+        }
+        .worker-item.expanded {
+            background: #313138;
+            border-bottom: none;
+        }
+        .worker-accordion-panel {
+            display: none;
+            background: #1a1d23;
+            border-bottom: 1px solid #3f3f46;
+            padding: 1rem;
+        }
+        .worker-item.expanded .worker-accordion-panel {
+            display: block;
+        }
+        .terminal-view {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            background: #0d0d0d;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            font-size: 0.75rem;
+            color: #22c55e;
+        }
+        .terminal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .terminal-row:last-child {
+            margin-bottom: 0;
+        }
+        .terminal-label {
+            color: #71717a;
+            font-size: 0.7rem;
+            min-width: 100px;
+        }
+        .terminal-value {
+            color: #e4e4e7;
+            font-size: 0.75rem;
+            word-break: break-all;
+        }
+        .terminal-log {
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #3f3f46;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .action-btn.message-btn {
+            background: #3b82f6;
+            color: white;
+        }
+        .action-btn.message-btn:hover {
+            background: #2563eb;
+        }
+        .action-btn.interrupt-btn {
+            background: #f59e0b;
+            color: white;
+        }
+        .action-btn.interrupt-btn:hover {
+            background: #d97706;
+        }
+        .action-btn.log-btn {
+            background: #6b7280;
+            color: white;
+        }
+        .action-btn.log-btn:hover {
+            background: #4b5563;
+        }
+        .message-input-row {
+            display: none;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .message-input-row.show {
+            display: flex;
+        }
+        .message-textarea {
+            flex: 1;
+            background: #0d0d0d;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            color: #e4e4e7;
+            padding: 0.5rem;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.75rem;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .message-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .send-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .send-btn:hover {
+            background: #16a34a;
+        }
+        .chevron {
+            transition: transform 0.2s;
+        }
+        .worker-item.expanded .chevron {
+            transform: rotate(90deg);
+        }
         .status-dot {
             width: 10px;
             height: 10px;
@@ -294,7 +427,7 @@
                     data-status="{{ worker.status }}" 
                     data-lane="{{ worker.lane or '' }}" 
                     data-branch="{{ worker.branch or '' }}"
-                    onclick="selectWorker(this)">
+                    onclick="toggleAccordion(this)">
                     <span class="status-dot {{ worker.status }}"></span>
                     <div class="worker-info">
                         <div class="issue">#{{ worker.issue_number }}</div>
@@ -304,6 +437,32 @@
                         <div class="lane">{{ worker.lane or 'unknown' }}</div>
                     </div>
                     <span class="status-label {{ worker.status }}">{{ worker.status }}</span>
+                    <span class="chevron">▶</span>
+                </li>
+                <li class="worker-accordion-panel" data-issue="{{ worker.issue_number }}">
+                    <div class="terminal-view">
+                        <div class="terminal-row">
+                            <span class="terminal-label">Working Dir:</span>
+                            <span class="terminal-value" data-workdir="{{ worker.issue_number }}">-</span>
+                        </div>
+                        <div class="terminal-row">
+                            <span class="terminal-label">Command:</span>
+                            <span class="terminal-value" data-cmd="{{ worker.issue_number }}">-</span>
+                        </div>
+                        <div class="terminal-row" style="flex-direction: column;">
+                            <span class="terminal-label">Log Tail (30 lines):</span>
+                            <pre class="terminal-log" data-log="{{ worker.issue_number }}">-</pre>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="action-btn message-btn" data-issue="{{ worker.issue_number }}" onclick="showMessageInput(event, this)">Message</button>
+                            <button class="action-btn interrupt-btn" data-issue="{{ worker.issue_number }}" onclick="interruptWorker(event, this)">Interrupt</button>
+                            <button class="action-btn log-btn" data-issue="{{ worker.issue_number }}" onclick="viewFullLog(event, this)">View Full Log</button>
+                        </div>
+                        <div class="message-input-row" data-issue="{{ worker.issue_number }}">
+                            <textarea class="message-textarea" data-issue="{{ worker.issue_number }}" placeholder="Enter message to send to agent..."></textarea>
+                            <button class="send-btn" data-issue="{{ worker.issue_number }}" onclick="sendMessage(event, this)">Send</button>
+                        </div>
+                    </div>
                 </li>
                 {% endfor %}
             </ul>
@@ -534,6 +693,32 @@
                     item.classList.remove('stuck');
                 }
             });
+            
+            const expandedItems = document.querySelectorAll('.worker-item.expanded');
+            expandedItems.forEach(item => {
+                const issueNum = item.dataset.issue;
+                const session = sessionsCache[issueNum] || {};
+                const panel = item.nextElementSibling;
+                if (panel && panel.classList.contains('worker-accordion-panel')) {
+                    const workdirEl = panel.querySelector('[data-workdir="' + issueNum + '"]');
+                    if (workdirEl) {
+                        workdirEl.textContent = session.worktree || '-';
+                    }
+                    
+                    const cmdEl = panel.querySelector('[data-cmd="' + issueNum + '"]');
+                    if (cmdEl) {
+                        cmdEl.textContent = session.current_command || '-';
+                    }
+                    
+                    const logEl = panel.querySelector('[data-log="' + issueNum + '"]');
+                    if (logEl && session.output_lines && session.output_lines.length > 0) {
+                        const last30 = session.output_lines.slice(-30);
+                        logEl.textContent = last30.join('\n');
+                    } else if (logEl) {
+                        logEl.textContent = '-';
+                    }
+                }
+            });
         }
         
         function updateStuckWarning(stuckWorkers) {
@@ -551,6 +736,123 @@
             document.getElementById('auto-restart-toggle').checked = true;
             saveSettings();
             alert('Auto-restart enabled. Daemon will automatically restart stuck workers.');
+        }
+        
+        function toggleAccordion(el) {
+            const issueNumber = el.dataset.issue;
+            
+            const wasExpanded = el.classList.contains('expanded');
+            
+            document.querySelectorAll('.worker-item.expanded').forEach(item => {
+                item.classList.remove('expanded');
+            });
+            
+            if (!wasExpanded) {
+                el.classList.add('expanded');
+                const session = sessionsCache[issueNumber] || {};
+                const issue = workersData[String(issueNumber)];
+                
+                const panel = el.nextElementSibling;
+                if (panel && panel.classList.contains('worker-accordion-panel')) {
+                    const workdirEl = panel.querySelector('[data-workdir="' + issueNumber + '"]');
+                    if (workdirEl) {
+                        workdirEl.textContent = session.worktree || '-';
+                    }
+                    
+                    const cmdEl = panel.querySelector('[data-cmd="' + issueNumber + '"]');
+                    if (cmdEl) {
+                        cmdEl.textContent = session.current_command || '-';
+                    }
+                    
+                    const logEl = panel.querySelector('[data-log="' + issueNumber + '"]');
+                    if (logEl && session.output_lines && session.output_lines.length > 0) {
+                        const last30 = session.output_lines.slice(-30);
+                        logEl.textContent = last30.join('\n');
+                    } else if (logEl) {
+                        logEl.textContent = '-';
+                    }
+                }
+            }
+        }
+        
+        function showMessageInput(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            const panel = btn.closest('.worker-accordion-panel');
+            const inputRow = panel.querySelector('.message-input-row');
+            inputRow.classList.toggle('show');
+        }
+        
+        function sendMessage(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            const panel = btn.closest('.worker-accordion-panel');
+            const textarea = panel.querySelector('.message-textarea');
+            const message = textarea.value.trim();
+            
+            if (!message) {
+                alert('Please enter a message.');
+                return;
+            }
+            
+            fetch('/api/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ issue_number: parseInt(issueNumber), message: message })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Message sent to worker for issue #' + issueNumber);
+                    textarea.value = '';
+                    panel.querySelector('.message-input-row').classList.remove('show');
+                }
+            })
+            .catch(err => alert('Request failed: ' + err));
+        }
+        
+        function interruptWorker(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            if (confirm('Send SIGINT to interrupt worker for issue #' + issueNumber + '?')) {
+                fetch('/api/interrupt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ issue_number: parseInt(issueNumber) })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('SIGINT sent to worker for issue #' + issueNumber);
+                        refreshData();
+                    }
+                })
+                .catch(err => alert('Request failed: ' + err));
+            }
+        }
+        
+        function viewFullLog(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            fetch('/api/log/' + issueNumber)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else if (data.success && data.log) {
+                        const width = Math.min(800, window.innerWidth - 100);
+                        const height = Math.min(600, window.innerHeight - 100);
+                        const left = (window.innerWidth - width) / 2;
+                        const top = (window.innerHeight - height) / 2;
+                        const logWindow = window.open('', 'fulllog', 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top);
+                        logWindow.document.write('<html><head><title>Full Log - Issue #' + issueNumber + '</title></head><body style="background:#0d0d0d;color:#22c55e;font-family:monospace;padding:1rem;white-space:pre-wrap;word-break:break-all;">' + data.log + '</body></html>');
+                    }
+                })
+                .catch(err => alert('Request failed: ' + err));
         }
         
         function selectWorker(el) {
