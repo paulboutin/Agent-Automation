@@ -22,6 +22,7 @@ class WorkerSession:
     def status_indicator(self) -> str:
         indicators = {
             "running": "●",
+            "stuck": "⬧",
             "blocked": "▲",
             "failed": "■",
             "done": "✓",
@@ -45,15 +46,27 @@ def build_mock_sessions() -> list[WorkerSession]:
             comment_target="#17",
         ),
         WorkerSession(
+            worker_id="backend-44",
+            issue_number=44,
+            title="Detect stuck workers",
+            status="blocked",
+            lane="agent:backend",
+            branch="agent/issue-44-backend",
+            host="codex",
+            last_heartbeat="5m ago",
+            summary="Waiting on stuck worker detection implementation.",
+            comment_target="#44",
+        ),
+        WorkerSession(
             worker_id="backend-12",
             issue_number=12,
             title="Implement branch cleanup",
-            status="blocked",
+            status="stuck",
             lane="agent:backend",
             branch="agent/issue-12-backend",
             host="claude",
-            last_heartbeat="3m ago",
-            summary="Waiting on retention policy confirmation for stale branches.",
+            last_heartbeat="2h 15m ago",
+            summary="Worker running >1 hour, may be stuck. Check logs for progress.",
             comment_target="#12",
         ),
         WorkerSession(
