@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from worker_dashboard.data import GitHubCLI, GitHubSnapshot, WorkerDataAggregator
+from agent_dashboard.data import GitHubCLI, GitHubSnapshot, WorkerDataAggregator
 
 
 class StaticGitHubClient:
@@ -18,7 +18,7 @@ class StaticGitHubClient:
         return GitHubSnapshot(available=False, error="disabled")
 
 
-class WorkerDashboardDataTests(unittest.TestCase):
+class AgentDashboardDataTests(unittest.TestCase):
     def test_refresh_discovers_local_sessions_and_daemon_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -59,11 +59,15 @@ class WorkerDashboardDataTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (run_dir / "issue-16-20260413-180000.clean.log").write_text("STATUS: DONE\n", encoding="utf-8")
+            (run_dir / "issue-16-20260413-180000.clean.log").write_text(
+                "STATUS: DONE\n", encoding="utf-8"
+            )
             (state_dir / "inbox" / "payload.json").write_text("{}", encoding="utf-8")
             (state_dir / "handled" / "event.json").write_text("{}", encoding="utf-8")
             (state_dir / "conflicts" / "pr-12.md").write_text("# conflict\n", encoding="utf-8")
-            (state_dir / "logs" / "relay-events.jsonl").write_text('{"dedupeKey":"abc"}\n', encoding="utf-8")
+            (state_dir / "logs" / "relay-events.jsonl").write_text(
+                '{"dedupeKey":"abc"}\n', encoding="utf-8"
+            )
             (state_dir / "queue" / "ready.json").write_text("[16, 17]", encoding="utf-8")
             (state_dir / "queue" / "blocked.json").write_text('{"issues":[18]}', encoding="utf-8")
 
@@ -113,7 +117,7 @@ class WorkerDashboardDataTests(unittest.TestCase):
     def test_github_cli_reports_missing_token(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             cli = GitHubCLI(Path(tmp))
-            with patch("worker_dashboard.data.shutil.which", return_value="/usr/bin/gh"):
+            with patch("agent_dashboard.data.shutil.which", return_value="/usr/bin/gh"):
                 with patch.dict("os.environ", {}, clear=True):
                     snapshot = cli.fetch()
 

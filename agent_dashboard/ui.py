@@ -3,17 +3,26 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import ClassVar
 
-from worker_dashboard.mock_data import WorkerSession, build_mock_sessions
+from agent_dashboard.mock_data import WorkerSession, build_mock_sessions
 
 try:
     from textual.app import App, ComposeResult
     from textual.containers import Horizontal, Vertical
     from textual.reactive import reactive
-    from textual.widgets import Button, DataTable, Footer, Header, Input, Static, TabbedContent, TabPane
+    from textual.widgets import (
+        Button,
+        DataTable,
+        Footer,
+        Header,
+        Input,
+        Static,
+        TabbedContent,
+        TabPane,
+    )
 except ModuleNotFoundError:  # pragma: no cover - exercised indirectly in this environment
     TEXTUAL_AVAILABLE = False
 
-    class WorkerDashboardApp:  # type: ignore[no-redef]
+    class AgentDashboardApp:  # type: ignore[no-redef]
         """Fallback entrypoint for environments without Textual installed."""
 
         textual_available: ClassVar[bool] = False
@@ -23,15 +32,15 @@ except ModuleNotFoundError:  # pragma: no cover - exercised indirectly in this e
 
         def run(self, *args, **kwargs) -> None:
             raise ModuleNotFoundError(
-                "textual is required to run WorkerDashboardApp. "
+                "textual is required to run AgentDashboardApp. "
                 "Install project dependencies to launch the dashboard."
             )
 
 else:
     TEXTUAL_AVAILABLE = True
 
-    class WorkerDashboardApp(App[None]):
-        """Terminal dashboard for monitoring worker sessions."""
+    class AgentDashboardApp(App[None]):
+        """Terminal dashboard for monitoring agent sessions."""
 
         CSS = """
         Screen {
@@ -94,7 +103,9 @@ else:
                 with TabPane("Workers", id="workers"):
                     with Horizontal(id="workspace"):
                         with Vertical(id="workers-panel"):
-                            table = DataTable(id="worker-table", zebra_stripes=True, cursor_type="row")
+                            table = DataTable(
+                                id="worker-table", zebra_stripes=True, cursor_type="row"
+                            )
                             table.add_columns("Status", "Worker", "Issue", "Lane", "Heartbeat")
                             yield table
                         with Vertical(id="detail-panel"):
@@ -171,7 +182,11 @@ else:
         @property
         def selected_session(self) -> WorkerSession | None:
             return next(
-                (session for session in self.sessions if session.worker_id == self.selected_worker_id),
+                (
+                    session
+                    for session in self.sessions
+                    if session.worker_id == self.selected_worker_id
+                ),
                 None,
             )
 

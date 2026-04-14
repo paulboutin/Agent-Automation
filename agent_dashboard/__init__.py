@@ -1,4 +1,4 @@
-"""Worker dashboard package."""
+"""Agent dashboard package."""
 
 from .data import (
     AggregatedWorkerState,
@@ -7,7 +7,7 @@ from .data import (
     WorkerDataAggregator,
     WorkerSession,
 )
-from .ui import WorkerDashboardApp
+from .ui import AgentDashboardApp
 from .mock_data import build_mock_sessions
 
 __all__ = [
@@ -16,6 +16,6 @@ __all__ = [
     "GitHubSnapshot",
     "WorkerDataAggregator",
     "WorkerSession",
-    "WorkerDashboardApp",
+    "AgentDashboardApp",
     "build_mock_sessions",
 ]

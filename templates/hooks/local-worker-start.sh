@@ -182,11 +182,11 @@ if [[ "${launch_dashboard}" == "true" ]]; then
       tmux select-window -t "${dashboard_session}:0" 2>/dev/null || true
       tmux select-pane -t "${dashboard_session}:0" 2>/dev/null || true
     else
-      tmux new-session -d -s "${dashboard_session}" "python -m worker_dashboard.web"
+      tmux new-session -d -s "${dashboard_session}" "python -m agent_dashboard.web"
       sleep 2
     fi
   else
-    nohup python -m worker_dashboard.web > /tmp/dashboard.log 2>&1 &
+    nohup python -m agent_dashboard.web > /tmp/dashboard.log 2>&1 &
     sleep 3
   fi
   

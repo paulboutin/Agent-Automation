@@ -216,7 +216,7 @@ For multi-task features, use the feature branch workflow:
    - Normal development -> main promotion
 
 Example:
-- `feature/worker-dashboard` created for Worker Dashboard UI
-- Issues #16-#20 target `feature/worker-dashboard`
+- `feature/agent-dashboard` created for Agent Dashboard UI
+- Issues #16-#20 target `feature/agent-dashboard`
 - Issue #21 runs QA on the feature branch
 - PR to development after all pass

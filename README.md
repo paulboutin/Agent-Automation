@@ -26,14 +26,14 @@ Required packages (see `pyproject.toml`):
 
 ## How to Run the Dashboard
 
-The worker dashboard provides a visual interface for monitoring agent automation.
+The agent dashboard provides a visual interface for monitoring agent automation.
 
 ```bash
 # Run the TUI dashboard
-python -m worker_dashboard
+python -m agent_dashboard
 
 # Or run as a web server
-python -m worker_dashboard --serve
+python -m agent_dashboard --serve
 ```
 
 The dashboard displays:

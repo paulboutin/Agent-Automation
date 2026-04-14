@@ -1,10 +1,10 @@
 import unittest
 
-from worker_dashboard.mock_data import build_mock_sessions
-from worker_dashboard.ui import WorkerDashboardApp
+from agent_dashboard.mock_data import build_mock_sessions
+from agent_dashboard.ui import AgentDashboardApp
 
 
-class WorkerDashboardTests(unittest.TestCase):
+class AgentDashboardTests(unittest.TestCase):
     def test_mock_sessions_cover_multiple_statuses(self) -> None:
         sessions = build_mock_sessions()
 
@@ -14,7 +14,7 @@ class WorkerDashboardTests(unittest.TestCase):
         self.assertIn("blocked", {session.status for session in sessions})
 
     def test_dashboard_app_is_importable(self) -> None:
-        app = WorkerDashboardApp()
+        app = AgentDashboardApp()
 
         self.assertTrue(hasattr(app, "sessions"))
         self.assertGreaterEqual(len(app.sessions), 1)

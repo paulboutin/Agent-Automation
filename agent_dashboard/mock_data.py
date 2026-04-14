@@ -35,7 +35,7 @@ def build_mock_sessions() -> list[WorkerSession]:
         WorkerSession(
             worker_id="frontend-17",
             issue_number=17,
-            title="Build worker dashboard TUI",
+            title="Build agent dashboard TUI",
             status="running",
             lane="agent:frontend",
             branch="agent/issue-17-frontend",
