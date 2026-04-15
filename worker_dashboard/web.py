@@ -20,19 +20,54 @@ app = Flask(__name__)
 aggregator = WorkerDataAggregator()
 github_client = GitHubCLI(Path(__file__).parent.parent)
 
+OPEN_LIST_STATUSES = frozenset({"active", "running", "blocked", "queued"})
+CLOSED_LIST_STATUSES = frozenset({"done", "failed", "closed"})
+
+
+def _session_sort_key(session) -> tuple[int, int]:
+    issue_number = session.issue_number if session.issue_number is not None else sys.maxsize
+    return (issue_number, 0)
+
+
+def _serialize_session(session) -> dict[str, object]:
+    return {
+        "issue_number": session.issue_number,
+        "branch": session.branch,
+        "status": session.status,
+        "lane": session.lane,
+        "age_seconds": session.age_seconds,
+        "worktree": str(session.worktree) if session.worktree else None,
+        "current_command": session.current_command,
+        "output_lines": session.output_lines,
+        "started_at": session.started_at.isoformat() if session.started_at else None,
+    }
+
+
+def prepare_issue_sessions(sessions) -> list[dict[str, object]]:
+    done_cutoff = 24 * 60 * 60
+    visible_sessions = [
+        session
+        for session in sessions
+        if not (
+            session.status.lower() == "done"
+            and session.age_seconds is not None
+            and session.age_seconds > done_cutoff
+        )
+    ]
+    return [_serialize_session(session) for session in sorted(visible_sessions, key=_session_sort_key)]
+
 
 @app.route("/")
 def index():
     state = aggregator.refresh()
     issues_by_num = {issue["number"]: issue for issue in state.github.issues}
-    done_cutoff = 24 * 60 * 60
-    sessions = [
-        s
-        for s in state.sessions
-        if not (s.status.lower() == "done" and s.age_seconds and s.age_seconds > done_cutoff)
-    ]
     return render_template(
-        "index.html", state=state, sessions=sessions, issues_by_num=issues_by_num
+        "index.html",
+        state=state,
+        sessions=prepare_issue_sessions(state.sessions),
+        issues_by_num=issues_by_num,
+        open_statuses=sorted(OPEN_LIST_STATUSES),
+        closed_statuses=sorted(CLOSED_LIST_STATUSES),
     )
 
 
@@ -40,27 +75,9 @@ def index():
 def api_refresh():
     state = aggregator.refresh(force=True)
     issues_by_num = {issue["number"]: issue for issue in state.github.issues}
-    done_cutoff = 24 * 60 * 60
-    sessions = []
-    for s in state.sessions:
-        if s.status.lower() == "done" and s.age_seconds and s.age_seconds > done_cutoff:
-            continue
-        sessions.append(
-            {
-                "issue_number": s.issue_number,
-                "branch": s.branch,
-                "status": s.status,
-                "lane": s.lane,
-                "age_seconds": s.age_seconds,
-                "worktree": str(s.worktree) if s.worktree else None,
-                "current_command": s.current_command,
-                "output_lines": s.output_lines,
-                "started_at": s.started_at.isoformat() if s.started_at else None,
-            }
-        )
     return jsonify(
         {
-            "sessions": sessions,
+            "sessions": prepare_issue_sessions(state.sessions),
             "queue": {
                 "active": state.daemon.queue.active_issue_numbers,
                 "queued": state.daemon.queue.queued_issue_numbers,
