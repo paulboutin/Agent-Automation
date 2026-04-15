@@ -87,15 +87,30 @@ else:
         .tab-copy {
             padding: 1 2;
         }
+
+        #list-tabs {
+            height: auto;
+            padding: 1 2;
+        }
+
+        #list-tabs Button {
+            min-width: 12;
+        }
         """
 
         BINDINGS = [("q", "quit", "Quit"), ("r", "refresh", "Refresh")]
 
         selected_worker_id = reactive("")
+        active_list_tab = reactive("open")
 
         def __init__(self) -> None:
             super().__init__()
             self.sessions = build_mock_sessions()
+
+        @property
+        def filtered_sessions(self) -> list[WorkerSession]:
+            filtered = [s for s in self.sessions if s.is_open == (self.active_list_tab == "open")]
+            return sorted(filtered, key=lambda s: s.issue_number)
 
         def compose(self) -> ComposeResult:
             yield Header(show_clock=True)
@@ -103,6 +118,9 @@ else:
                 with TabPane("Workers", id="workers"):
                     with Horizontal(id="workspace"):
                         with Vertical(id="workers-panel"):
+                            with Horizontal(id="list-tabs"):
+                                yield Button("Open", id="tab-open", variant="primary")
+                                yield Button("Closed", id="tab-closed", variant="default")
                             table = DataTable(
                                 id="worker-table", zebra_stripes=True, cursor_type="row"
                             )
@@ -139,10 +157,24 @@ else:
             self._load_workers()
             self.notify("Worker list refreshed from mock data.")
 
+        def watch_active_list_tab(self) -> None:
+            try:
+                self._load_workers()
+                self._update_tab_button_variants()
+            except Exception:
+                pass
+
+        def _update_tab_button_variants(self) -> None:
+            open_btn = self.query_one("#tab-open", Button)
+            closed_btn = self.query_one("#tab-closed", Button)
+            open_btn.variant = "primary" if self.active_list_tab == "open" else "default"
+            closed_btn.variant = "primary" if self.active_list_tab == "closed" else "default"
+
         def _load_workers(self) -> None:
             table = self.query_one("#worker-table", DataTable)
             table.clear(columns=False)
-            for session in self.sessions:
+            sessions = self.filtered_sessions
+            for session in sessions:
                 table.add_row(
                     f"{session.status_indicator} {session.status}",
                     session.worker_id,
@@ -152,10 +184,14 @@ else:
                     key=session.worker_id,
                 )
 
-            if self.sessions:
+            if sessions:
                 table.move_cursor(row=0)
-                self.selected_worker_id = self.sessions[0].worker_id
+                self.selected_worker_id = sessions[0].worker_id
                 self._render_selected_session()
+            else:
+                self.selected_worker_id = ""
+                detail = self.query_one("#detail-body", Static)
+                detail.update("No workers in this category.")
 
         def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
             if event.row_key is None:
@@ -164,6 +200,10 @@ else:
             self._render_selected_session()
 
         def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id in ("tab-open", "tab-closed"):
+                self.active_list_tab = event.button.id.replace("tab-", "")
+                return
+
             if not self.selected_session:
                 self.notify("Select a worker session first.", severity="warning")
                 return

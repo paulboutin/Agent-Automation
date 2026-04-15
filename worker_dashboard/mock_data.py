@@ -35,6 +35,10 @@ class WorkerSession:
         }
         return indicators.get(self.status, "?")
 
+    @property
+    def is_open(self) -> bool:
+        return self.status not in ("done", "failed", "closed")
+
 
 def build_mock_sessions() -> list[WorkerSession]:
     return [
@@ -135,5 +139,39 @@ def build_mock_sessions() -> list[WorkerSession]:
             output_lines=["./contracts/foo.schema.json: FAILED", "Error: Invalid JSON in schema"],
             started_at="2026-04-14T15:10:00Z",
             runtime="8m 12s",
+        ),
+        WorkerSession(
+            worker_id="backend-5",
+            issue_number=5,
+            title="Add webhook support",
+            status="done",
+            lane="agent:backend",
+            branch="agent/issue-5-backend",
+            host="opencode",
+            last_heartbeat="1d ago",
+            summary="Webhook support implemented and merged.",
+            comment_target="#5",
+            current_working_dir="/tmp/worktrees/issue-5",
+            current_command="",
+            output_lines=["PR merged to development"],
+            started_at="2026-04-10T10:00:00Z",
+            runtime="45m",
+        ),
+        WorkerSession(
+            worker_id="frontend-3",
+            issue_number=3,
+            title="Fix dark mode toggle",
+            status="closed",
+            lane="agent:frontend",
+            branch="agent/issue-3-frontend",
+            host="claude",
+            last_heartbeat="2d ago",
+            summary="Closed as duplicate of issue #7",
+            comment_target="#3",
+            current_working_dir="/tmp/worktrees/issue-3",
+            current_command="",
+            output_lines=[],
+            started_at="2026-04-08T09:00:00Z",
+            runtime="10m",
         ),
     ]
