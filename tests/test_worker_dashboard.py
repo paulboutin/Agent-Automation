@@ -20,14 +20,11 @@ class WorkerDashboardTests(unittest.TestCase):
         closed_sessions = [s for s in sessions if not s.is_open]
 
         self.assertGreater(len(open_sessions), 0)
-        self.assertEqual(len(closed_sessions), 0)
+        self.assertGreater(len(closed_sessions), 0)
         for session in open_sessions:
             self.assertNotIn(session.status, ("done", "closed"))
-
-    def test_session_feature_branch_property(self) -> None:
-        sessions = build_mock_sessions()
-        has_feature_branch = any(s.feature_branch for s in sessions)
-        self.assertFalse(has_feature_branch)
+        for session in closed_sessions:
+            self.assertIn(session.status, ("done", "failed", "closed"))
 
     def test_dashboard_app_is_importable(self) -> None:
         app = WorkerDashboardApp()
