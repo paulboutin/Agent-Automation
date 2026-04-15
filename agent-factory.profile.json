@@ -81,11 +81,9 @@
   "execution": {
     "defaultHost": "opencode",
     "enabledHosts": [
-      "codex",
-      "claude",
       "opencode"
     ],
-    "hostedEnabled": true,
+    "hostedEnabled": false,
     "automationRoot": ".agent-automation",
     "costProfiles": {
       "low": {
