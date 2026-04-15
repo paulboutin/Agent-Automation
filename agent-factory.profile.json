@@ -79,7 +79,7 @@
     }
   ],
   "execution": {
-    "defaultHost": "codex",
+    "defaultHost": "opencode",
     "enabledHosts": [
       "codex",
       "claude",
