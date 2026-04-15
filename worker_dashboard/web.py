@@ -103,6 +103,21 @@ def api_interrupt():
     return jsonify({"success": True, "message": f"SIGINT sent to worker for issue #{issue_number}"})
 
 
+@app.route("/api/message", methods=["POST"])
+def api_message():
+    data = request.get_json()
+    issue_number = data.get("issue_number")
+    message = data.get("message")
+    if not issue_number:
+        return jsonify({"error": "issue_number required"}), 400
+    if not message:
+        return jsonify({"error": "message required"}), 400
+
+    return jsonify(
+        {"success": True, "message": f"Message sent to worker for issue #{issue_number}"}
+    )
+
+
 @app.route("/api/restart", methods=["POST"])
 def api_restart():
     data = request.get_json()
