@@ -18,9 +18,12 @@
   "labels": {
     "ready": "ready",
     "active": "active",
+    "done": "done",
     "needsDecision": "needs-decision",
     "decisionProposed": "decision-proposed",
     "agentFailed": "agent-failed",
+    "needsQa": "needs-qa",
+    "qaPassed": "qa-passed",
     "lanePrefix": "agent:"
   },
   "roles": [
@@ -76,13 +79,11 @@
     }
   ],
   "execution": {
-    "defaultHost": "codex",
+    "defaultHost": "opencode",
     "enabledHosts": [
-      "codex",
-      "claude",
       "opencode"
     ],
-    "hostedEnabled": true,
+    "hostedEnabled": false,
     "automationRoot": ".agent-automation",
     "costProfiles": {
       "low": {

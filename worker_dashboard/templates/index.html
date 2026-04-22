@@ -21,7 +21,21 @@
             border-bottom: 1px solid #3f3f46;
         }
         .header h1 { font-size: 1.25rem; font-weight: 600; }
-        .header .refresh-btn {
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .daemon-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .status-dot.running { background: #22c55e; }
+        .status-dot.stopped { background: #6b7280; }
+        .header-btn {
             background: #3b82f6;
             color: white;
             border: none;
@@ -30,7 +44,10 @@
             cursor: pointer;
             font-size: 0.875rem;
         }
-        .header .refresh-btn:hover { background: #2563eb; }
+        .header-btn:hover { background: #2563eb; }
+        .header-btn.stop { background: #ef4444; }
+        .header-btn.stop:hover { background: #dc2626; }
+        .header-btn.stopped { background: #6b7280; }
         .container {
             display: grid;
             grid-template-columns: 1fr 350px;
@@ -51,6 +68,9 @@
             font-weight: 600;
             font-size: 0.875rem;
             border-bottom: 1px solid #3f3f46;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .workers-list { list-style: none; }
         .worker-item {
@@ -63,17 +83,154 @@
         }
         .worker-item:hover { background: #313138; }
         .worker-item:last-child { border-bottom: none; }
+        .worker-item.stuck {
+            background: #ef444420;
+            border-left: 3px solid #ef4444;
+        }
+        .worker-item {
+            position: relative;
+        }
+        .worker-item.expanded {
+            background: #313138;
+            border-bottom: none;
+        }
+        .worker-accordion-panel {
+            display: none;
+            background: #1a1d23;
+            border-bottom: 1px solid #3f3f46;
+            padding: 1rem;
+        }
+        .worker-item.expanded .worker-accordion-panel {
+            display: block;
+        }
+        .terminal-view {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            background: #0d0d0d;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            font-size: 0.75rem;
+            color: #22c55e;
+        }
+        .terminal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .terminal-row:last-child {
+            margin-bottom: 0;
+        }
+        .terminal-label {
+            color: #71717a;
+            font-size: 0.7rem;
+            min-width: 100px;
+        }
+        .terminal-value {
+            color: #e4e4e7;
+            font-size: 0.75rem;
+            word-break: break-all;
+        }
+        .terminal-log {
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #3f3f46;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .action-btn.message-btn {
+            background: #3b82f6;
+            color: white;
+        }
+        .action-btn.message-btn:hover {
+            background: #2563eb;
+        }
+        .action-btn.interrupt-btn {
+            background: #f59e0b;
+            color: white;
+        }
+        .action-btn.interrupt-btn:hover {
+            background: #d97706;
+        }
+        .action-btn.log-btn {
+            background: #6b7280;
+            color: white;
+        }
+        .action-btn.log-btn:hover {
+            background: #4b5563;
+        }
+        .message-input-row {
+            display: none;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .message-input-row.show {
+            display: flex;
+        }
+        .message-textarea {
+            flex: 1;
+            background: #0d0d0d;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            color: #e4e4e7;
+            padding: 0.5rem;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.75rem;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .message-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .send-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .send-btn:hover {
+            background: #16a34a;
+        }
+        .chevron {
+            transition: transform 0.2s;
+        }
+        .worker-item.expanded .chevron {
+            transform: rotate(90deg);
+        }
         .status-dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
         }
-        .status-dot.running { background: #22c55e; }
-        .status-dot.blocked { background: #f59e0b; }
-        .status-dot.queued { background: #6b7280; }
-        .status-dot.failed { background: #ef4444; }
-        .status-dot.done { background: #8b5cf6; }
+        .status-dot.running, .status-dot.RUNNING { background: #22c55e; }
+        .status-dot.done, .status-dot.DONE { background: #8b5cf6; }
+        .status-dot.blocked, .status-dot.BLOCKED { background: #f59e0b; }
+        .status-dot.queued, .status-dot.QUEUED { background: #6b7280; }
+        .status-dot.failed, .status-dot.FAILED { background: #ef4444; }
         .worker-info { flex: 1; min-width: 0; }
         .worker-info .issue { font-weight: 600; font-size: 0.9rem; }
         .worker-info .title { font-size: 0.75rem; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -90,6 +247,7 @@
         .status-label.queued { background: #6b728020; color: #9ca3af; }
         .status-label.failed { background: #ef444420; color: #ef4444; }
         .status-label.done { background: #8b5cf620; color: #8b5cf6; }
+        .status-label.stuck { background: #ef444420; color: #ef4444; }
         .close-btn {
             background: #ef4444;
             color: white;
@@ -101,9 +259,22 @@
             margin-top: 0.5rem;
         }
         .close-btn:hover { background: #dc2626; }
+        .dismiss-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            margin-left: 0.5rem;
+        }
+        .dismiss-btn:hover { background: #4b5563; }
+        .button-row { display: flex; }
         .queue-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 0.5rem;
             padding: 1rem;
         }
@@ -125,7 +296,7 @@
         .queue-stat.active .value { color: #22c55e; }
         .queue-stat.queued .value { color: #3b82f6; }
         .queue-stat.blocked .value { color: #f59e0b; }
-        .queue-stat.relay .value { color: #a855f7; }
+        .queue-stat.done .value { color: #8b5cf6; }
         .details-panel { padding: 1rem; }
         .detail-row {
             display: flex;
@@ -141,25 +312,122 @@
             text-align: center;
             color: #71717a;
         }
+        .settings-panel { padding: 1rem; }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #3f3f46;
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 0.875rem; }
+        .setting-desc { font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #3f3f46;
+            transition: 0.2s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: #22c55e;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        .number-input {
+            background: #1f1f23;
+            border: 1px solid #3f3f46;
+            color: #e4e4e7;
+            padding: 0.5rem;
+            border-radius: 6px;
+            width: 80px;
+            text-align: center;
+        }
+        .number-input:focus { outline: none; border-color: #3b82f6; }
+        .save-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+        .save-btn:hover { background: #16a34a; }
+        .stuck-warning {
+            background: #ef444420;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin: 0.5rem 1rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+        .stuck-warning.show { display: block; }
     </style>
 </head>
 <body>
     <header class="header">
-        <h1>Worker Dashboard</h1>
-        <button class="refresh-btn" onclick="refreshData()">Refresh</button>
+        <div class="header-left">
+            <h1>Worker Dashboard</h1>
+            <div class="daemon-status">
+                <span class="status-dot stopped" id="daemon-status-dot"></span>
+                <span id="daemon-status-text">Stopped</span>
+            </div>
+        </div>
+        <div>
+            <button class="header-btn" id="daemon-toggle-btn" onclick="toggleDaemon()">Start Daemon</button>
+            <button class="header-btn" onclick="refreshData()">Refresh</button>
+        </div>
     </header>
     <div class="container">
         <div class="panel">
-            <div class="panel-header">Workers</div>
-            {% if state.sessions %}
+            <div class="panel-header">
+                Workers
+                <span id="worker-count" style="font-weight: normal; color: #a1a1aa;">0</span>
+            </div>
+            <div class="stuck-warning" id="stuck-warning">
+                ⚠️ <span id="stuck-count">0</span> stuck worker(s) detected - 
+                <a href="#" onclick="showSettings()" style="color: #3b82f6;">configure auto-restart</a>
+            </div>
+            {% if sessions %}
             <ul class="workers-list">
-                {% for worker in state.sessions %}
+                {% for worker in sessions %}
                 <li class="worker-item" 
                     data-issue="{{ worker.issue_number }}" 
                     data-status="{{ worker.status }}" 
                     data-lane="{{ worker.lane or '' }}" 
                     data-branch="{{ worker.branch or '' }}"
-                    onclick="selectWorker(this)">
+                    onclick="toggleAccordion(this)">
                     <span class="status-dot {{ worker.status }}"></span>
                     <div class="worker-info">
                         <div class="issue">#{{ worker.issue_number }}</div>
@@ -169,6 +437,32 @@
                         <div class="lane">{{ worker.lane or 'unknown' }}</div>
                     </div>
                     <span class="status-label {{ worker.status }}">{{ worker.status }}</span>
+                    <span class="chevron">▶</span>
+                </li>
+                <li class="worker-accordion-panel" data-issue="{{ worker.issue_number }}">
+                    <div class="terminal-view">
+                        <div class="terminal-row">
+                            <span class="terminal-label">Working Dir:</span>
+                            <span class="terminal-value" data-workdir="{{ worker.issue_number }}">-</span>
+                        </div>
+                        <div class="terminal-row">
+                            <span class="terminal-label">Command:</span>
+                            <span class="terminal-value" data-cmd="{{ worker.issue_number }}">-</span>
+                        </div>
+                        <div class="terminal-row" style="flex-direction: column;">
+                            <span class="terminal-label">Log Tail (30 lines):</span>
+                            <pre class="terminal-log" data-log="{{ worker.issue_number }}">-</pre>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="action-btn message-btn" data-issue="{{ worker.issue_number }}" onclick="showMessageInput(event, this)">Message</button>
+                            <button class="action-btn interrupt-btn" data-issue="{{ worker.issue_number }}" onclick="interruptWorker(event, this)">Interrupt</button>
+                            <button class="action-btn log-btn" data-issue="{{ worker.issue_number }}" onclick="viewFullLog(event, this)">View Full Log</button>
+                        </div>
+                        <div class="message-input-row" data-issue="{{ worker.issue_number }}">
+                            <textarea class="message-textarea" data-issue="{{ worker.issue_number }}" placeholder="Enter message to send to agent..."></textarea>
+                            <button class="send-btn" data-issue="{{ worker.issue_number }}" onclick="sendMessage(event, this)">Send</button>
+                        </div>
+                    </div>
                 </li>
                 {% endfor %}
             </ul>
@@ -180,20 +474,45 @@
             <div class="panel-header">Queue</div>
             <div class="queue-grid">
                 <div class="queue-stat active">
-                    <div class="value">{{ state.daemon.queue.active_issue_numbers|length }}</div>
+                    <div class="value" id="queue-active">0</div>
                     <div class="label">Active</div>
                 </div>
                 <div class="queue-stat queued">
-                    <div class="value">{{ state.daemon.queue.queued_issue_numbers|length }}</div>
+                    <div class="value" id="queue-queued">0</div>
                     <div class="label">Queued</div>
                 </div>
                 <div class="queue-stat blocked">
-                    <div class="value">{{ state.daemon.queue.blocked_issue_numbers|length }}</div>
+                    <div class="value" id="queue-blocked">0</div>
                     <div class="label">Blocked</div>
                 </div>
-                <div class="queue-stat relay">
-                    <div class="value">{{ state.daemon.queue.relay_inbox_count }}</div>
-                    <div class="label">Inbox</div>
+                <div class="queue-stat done">
+                    <div class="value" id="queue-done">0</div>
+                    <div class="label">Done</div>
+                </div>
+            </div>
+            <div class="panel-header" style="margin-top: 1rem;">Settings</div>
+            <div class="settings-panel">
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Auto-restart stuck workers</div>
+                        <div class="setting-desc">Automatically restart workers stuck for threshold time</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-restart-toggle" onchange="saveSettings()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Stuck threshold (minutes)</div>
+                    </div>
+                    <input type="number" class="number-input" id="stuck-threshold" min="1" value="60" onchange="saveSettings()">
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Poll interval (seconds)</div>
+                    </div>
+                    <input type="number" class="number-input" id="poll-interval" min="5" value="30" onchange="saveSettings()">
                 </div>
             </div>
             <div class="panel-header" style="margin-top: 1rem;">Details</div>
@@ -219,43 +538,404 @@
                     <span id="detail-branch">-</span>
                 </div>
                 <div class="detail-row">
-                    <span class="label">Last refresh</span>
-                    <span>{{ state.refreshed_at.strftime('%H:%M:%S') }}</span>
+                    <span class="label">Worktree</span>
+                    <span id="detail-worktree">-</span>
                 </div>
-                <button class="close-btn" id="close-btn" onclick="closeWorker()" style="display:none;">Close Issue</button>
+                <div class="detail-row">
+                    <span class="label">Started</span>
+                    <span id="detail-started">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Current Cmd</span>
+                    <span id="detail-command">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Last refresh</span>
+                    <span id="detail-refresh">-</span>
+                </div>
+                <div class="detail-row" style="flex-direction: column;">
+                    <span class="label">Log Tail</span>
+                    <pre id="detail-log" style="background: #1f1f23; padding: 0.5rem; border-radius: 4px; font-size: 0.75rem; overflow-x: auto; margin-top: 0.25rem;">-</pre>
+                </div>
+                <button class="close-btn" id="close-btn" onclick="closeIssue()" style="display:none;">Close Issue</button>
+                <button class="dismiss-btn" id="dismiss-btn" onclick="dismissWorker()" style="display:none;">Dismiss</button>
             </div>
         </div>
     </div>
     <script>
         let workersData = {{ issues_by_num | tojson }};
+        let sessionsCache = {};
+        let daemonRunning = false;
+        
+        function loadSettings() {
+            const stored = localStorage.getItem('daemon-settings');
+            if (stored) {
+                const s = JSON.parse(stored);
+                document.getElementById('auto-restart-toggle').checked = s.auto_restart_stuck;
+                document.getElementById('stuck-threshold').value = s.stuck_threshold_minutes;
+                document.getElementById('poll-interval').value = s.poll_interval_seconds;
+            }
+        }
+        
+        function saveSettings() {
+            const s = {
+                auto_restart_stuck: document.getElementById('auto-restart-toggle').checked,
+                stuck_threshold_minutes: parseInt(document.getElementById('stuck-threshold').value) || 60,
+                poll_interval_seconds: parseInt(document.getElementById('poll-interval').value) || 30,
+            };
+            localStorage.setItem('daemon-settings', JSON.stringify(s));
+            fetch('/api/daemon/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(s)
+            }).catch(err => console.error('Settings save error:', err));
+        }
+        
+        function updateDaemonStatus(status) {
+            daemonRunning = status.running;
+            const dot = document.getElementById('daemon-status-dot');
+            const text = document.getElementById('daemon-status-text');
+            const btn = document.getElementById('daemon-toggle-btn');
+            
+            if (status.running) {
+                dot.className = 'status-dot running';
+                text.textContent = 'Running';
+                btn.textContent = 'Stop Daemon';
+                btn.className = 'header-btn stop';
+            } else {
+                dot.className = 'status-dot stopped';
+                text.textContent = 'Stopped';
+                btn.textContent = 'Start Daemon';
+                btn.className = 'header-btn';
+            }
+            
+            if (status.settings) {
+                document.getElementById('auto-restart-toggle').checked = status.settings.auto_restart_stuck;
+                document.getElementById('stuck-threshold').value = status.settings.stuck_threshold_minutes;
+                document.getElementById('poll-interval').value = status.settings.poll_interval_seconds;
+            }
+        }
+        
+        function toggleDaemon() {
+            const btn = document.getElementById('daemon-toggle-btn');
+            if (daemonRunning) {
+                fetch('/api/daemon/stop', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) alert(data.error);
+                        checkDaemonStatus();
+                    });
+            } else {
+                fetch('/api/daemon/start', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) alert(data.error);
+                        checkDaemonStatus();
+                    });
+            }
+        }
+        
+        function checkDaemonStatus() {
+            fetch('/api/daemon/status')
+                .then(res => res.json())
+                .then(data => updateDaemonStatus(data));
+        }
         
         function refreshData() {
-            location.reload();
+            fetch('/api/refresh')
+                .then(res => res.json())
+                .then(data => {
+                    sessionsCache = {};
+                    data.sessions.forEach(s => {
+                        sessionsCache[s.issue_number] = s;
+                    });
+                    updateQueueStats(data.queue);
+                    updateWorkersList(data.sessions);
+                    updateStuckWarning(data.stuck_workers || []);
+                    document.getElementById('detail-refresh').textContent = new Date().toLocaleTimeString();
+                })
+                .catch(err => console.error('Refresh error:', err));
+            
+            checkDaemonStatus();
+        }
+        
+        function updateQueueStats(queue) {
+            document.getElementById('queue-active').textContent = queue.active ? queue.active.length : 0;
+            document.getElementById('queue-queued').textContent = queue.queued ? queue.queued.length : 0;
+            document.getElementById('queue-blocked').textContent = queue.blocked ? queue.blocked.length : 0;
+            document.getElementById('queue-done').textContent = queue.done || 0;
+        }
+        
+        function updateWorkersList(sessions) {
+            const list = document.querySelector('.workers-list');
+            if (!list) return;
+            
+            document.getElementById('worker-count').textContent = sessions.length;
+            
+            const stuck = new Set();
+            sessions.forEach(s => {
+                if (s.status === 'running' && s.age_seconds > 3600) {
+                    stuck.add(s.issue_number);
+                }
+            });
+            
+            const items = list.querySelectorAll('.worker-item');
+            items.forEach(item => {
+                const issueNum = parseInt(item.dataset.issue);
+                if (stuck.has(issueNum)) {
+                    item.classList.add('stuck');
+                    const label = item.querySelector('.status-label');
+                    if (label) {
+                        label.textContent = 'STUCK';
+                        label.className = 'status-label stuck';
+                    }
+                } else {
+                    item.classList.remove('stuck');
+                }
+            });
+            
+            const expandedItems = document.querySelectorAll('.worker-item.expanded');
+            expandedItems.forEach(item => {
+                const issueNum = item.dataset.issue;
+                const session = sessionsCache[issueNum] || {};
+                const panel = item.nextElementSibling;
+                if (panel && panel.classList.contains('worker-accordion-panel')) {
+                    const workdirEl = panel.querySelector('[data-workdir="' + issueNum + '"]');
+                    if (workdirEl) {
+                        workdirEl.textContent = session.worktree || '-';
+                    }
+                    
+                    const cmdEl = panel.querySelector('[data-cmd="' + issueNum + '"]');
+                    if (cmdEl) {
+                        cmdEl.textContent = session.current_command || '-';
+                    }
+                    
+                    const logEl = panel.querySelector('[data-log="' + issueNum + '"]');
+                    if (logEl && session.output_lines && session.output_lines.length > 0) {
+                        const last30 = session.output_lines.slice(-30);
+                        logEl.textContent = last30.join('\n');
+                    } else if (logEl) {
+                        logEl.textContent = '-';
+                    }
+                }
+            });
+        }
+        
+        function updateStuckWarning(stuckWorkers) {
+            const warning = document.getElementById('stuck-warning');
+            const countEl = document.getElementById('stuck-count');
+            if (stuckWorkers && stuckWorkers.length > 0) {
+                countEl.textContent = stuckWorkers.length;
+                warning.classList.add('show');
+            } else {
+                warning.classList.remove('show');
+            }
+        }
+        
+        function showSettings() {
+            document.getElementById('auto-restart-toggle').checked = true;
+            saveSettings();
+            alert('Auto-restart enabled. Daemon will automatically restart stuck workers.');
+        }
+        
+        function toggleAccordion(el) {
+            const issueNumber = el.dataset.issue;
+            
+            const wasExpanded = el.classList.contains('expanded');
+            
+            document.querySelectorAll('.worker-item.expanded').forEach(item => {
+                item.classList.remove('expanded');
+            });
+            
+            if (!wasExpanded) {
+                el.classList.add('expanded');
+                const session = sessionsCache[issueNumber] || {};
+                const issue = workersData[String(issueNumber)];
+                
+                const panel = el.nextElementSibling;
+                if (panel && panel.classList.contains('worker-accordion-panel')) {
+                    const workdirEl = panel.querySelector('[data-workdir="' + issueNumber + '"]');
+                    if (workdirEl) {
+                        workdirEl.textContent = session.worktree || '-';
+                    }
+                    
+                    const cmdEl = panel.querySelector('[data-cmd="' + issueNumber + '"]');
+                    if (cmdEl) {
+                        cmdEl.textContent = session.current_command || '-';
+                    }
+                    
+                    const logEl = panel.querySelector('[data-log="' + issueNumber + '"]');
+                    if (logEl && session.output_lines && session.output_lines.length > 0) {
+                        const last30 = session.output_lines.slice(-30);
+                        logEl.textContent = last30.join('\n');
+                    } else if (logEl) {
+                        logEl.textContent = '-';
+                    }
+                }
+            }
+        }
+        
+        function showMessageInput(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            const panel = btn.closest('.worker-accordion-panel');
+            const inputRow = panel.querySelector('.message-input-row');
+            inputRow.classList.toggle('show');
+        }
+        
+        function sendMessage(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            const panel = btn.closest('.worker-accordion-panel');
+            const textarea = panel.querySelector('.message-textarea');
+            const message = textarea.value.trim();
+            
+            if (!message) {
+                alert('Please enter a message.');
+                return;
+            }
+            
+            fetch('/api/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ issue_number: parseInt(issueNumber), message: message })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Message sent to worker for issue #' + issueNumber);
+                    textarea.value = '';
+                    panel.querySelector('.message-input-row').classList.remove('show');
+                }
+            })
+            .catch(err => alert('Request failed: ' + err));
+        }
+        
+        function interruptWorker(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            if (confirm('Send SIGINT to interrupt worker for issue #' + issueNumber + '?')) {
+                fetch('/api/interrupt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ issue_number: parseInt(issueNumber) })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('SIGINT sent to worker for issue #' + issueNumber);
+                        refreshData();
+                    }
+                })
+                .catch(err => alert('Request failed: ' + err));
+            }
+        }
+        
+        function viewFullLog(event, btn) {
+            event.stopPropagation();
+            const issueNumber = btn.dataset.issue;
+            fetch('/api/log/' + issueNumber)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else if (data.success && data.log) {
+                        const width = Math.min(800, window.innerWidth - 100);
+                        const height = Math.min(600, window.innerHeight - 100);
+                        const left = (window.innerWidth - width) / 2;
+                        const top = (window.innerHeight - height) / 2;
+                        const logWindow = window.open('', 'fulllog', 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top);
+                        logWindow.document.write('<html><head><title>Full Log - Issue #' + issueNumber + '</title></head><body style="background:#0d0d0d;color:#22c55e;font-family:monospace;padding:1rem;white-space:pre-wrap;word-break:break-all;">' + data.log + '</body></html>');
+                    }
+                })
+                .catch(err => alert('Request failed: ' + err));
         }
         
         function selectWorker(el) {
             const issueNumber = parseInt(el.dataset.issue);
             const issue = workersData[String(issueNumber)];
+            const session = sessionsCache[issueNumber] || {};
             
             document.getElementById('detail-issue').textContent = '#' + issueNumber;
             document.getElementById('detail-title').textContent = issue ? (issue.title || '-').substring(0, 40) : '-';
             document.getElementById('detail-status').textContent = el.dataset.status || '-';
             document.getElementById('detail-lane').textContent = el.dataset.lane || '-';
             document.getElementById('detail-branch').textContent = el.dataset.branch || '-';
+            document.getElementById('detail-worktree').textContent = session.worktree || '-';
+            
+            const started = session.started_at;
+            if (started) {
+                const d = new Date(started);
+                document.getElementById('detail-started').textContent = d.toLocaleTimeString();
+            } else {
+                document.getElementById('detail-started').textContent = '-';
+            }
+            
+            document.getElementById('detail-command').textContent = session.current_command || '-';
+            
+            const logEl = document.getElementById('detail-log');
+            if (session.output_lines && session.output_lines.length > 0) {
+                logEl.textContent = session.output_lines.join('\n');
+            } else {
+                logEl.textContent = '-';
+            }
             
             const closeBtn = document.getElementById('close-btn');
+            const dismissBtn = document.getElementById('dismiss-btn');
             closeBtn.style.display = 'block';
+            dismissBtn.style.display = 'block';
             closeBtn.dataset.issue = issueNumber;
+            dismissBtn.dataset.issue = issueNumber;
         }
         
-        function closeWorker() {
+        function closeIssue() {
             const issueNum = document.getElementById('close-btn').dataset.issue;
             if (confirm('Close issue #' + issueNum + '?')) {
-                alert('Close functionality not yet implemented');
+                fetch('/api/close-issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ issue_number: parseInt(issueNum) })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert(data.message);
+                        refreshData();
+                    }
+                })
+                .catch(err => alert('Request failed: ' + err));
             }
         }
         
-        setInterval(refreshData, 30000);
+        function dismissWorker() {
+            const issueNum = document.getElementById('dismiss-btn').dataset.issue;
+            if (confirm('Dismiss worker for issue #' + issueNum + ' from dashboard?')) {
+                sessionStorage.setItem('dismissed_' + issueNum, Date.now());
+                refreshData();
+            }
+        }
+        
+        function isWorkerDismissed(issueNum) {
+            const dismissed = sessionStorage.getItem('dismissed_' + issueNum);
+            if (!dismissed) return false;
+            const age = Date.now() - parseInt(dismissed);
+            if (age > 24 * 60 * 60 * 1000) {
+                sessionStorage.removeItem('dismissed_' + issueNum);
+                return false;
+            }
+            return true;
+        }
+        
+        loadSettings();
+        checkDaemonStatus();
+        
+        setInterval(refreshData, 15000);
     </script>
 </body>
 </html>

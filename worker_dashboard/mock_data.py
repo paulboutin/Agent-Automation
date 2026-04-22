@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
@@ -17,17 +17,27 @@ class WorkerSession:
     last_heartbeat: str
     summary: str
     comment_target: str
+    current_working_dir: str = ""
+    current_command: str = ""
+    output_lines: list[str] = field(default_factory=list)
+    started_at: str = ""
+    runtime: str = ""
 
     @property
     def status_indicator(self) -> str:
         indicators = {
             "running": "●",
+            "stuck": "⬧",
             "blocked": "▲",
             "failed": "■",
             "done": "✓",
             "queued": "○",
         }
         return indicators.get(self.status, "?")
+
+    @property
+    def is_open(self) -> bool:
+        return self.status not in ("done", "failed", "closed")
 
 
 def build_mock_sessions() -> list[WorkerSession]:
@@ -43,18 +53,58 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="15s ago",
             summary="Rendering Textual tabs and wiring mock actions.",
             comment_target="#17",
+            current_working_dir="/tmp/worktrees/issue-17",
+            current_command="git diff HEAD --stat",
+            output_lines=[
+                " src/ui/main.py    | 45 +++----",
+                " src/ui/list.py  | 12 +--",
+                " 2 files changed, 33 insertions, 45 deletions",
+            ],
+            started_at="2026-04-14T16:45:00Z",
+            runtime="15m 23s",
+        ),
+        WorkerSession(
+            worker_id="backend-44",
+            issue_number=44,
+            title="Detect stuck workers",
+            status="blocked",
+            lane="agent:backend",
+            branch="agent/issue-44-backend",
+            host="codex",
+            last_heartbeat="5m ago",
+            summary="Waiting on stuck worker detection implementation.",
+            comment_target="#44",
+            current_working_dir="/tmp/worktrees/issue-44",
+            current_command="",
+            output_lines=[
+                "STATUS: BLOCKED",
+                "QUESTION: What is the stuck threshold?",
+                "OPTION 1: 1 hour",
+                "OPTION 2: 30 minutes",
+            ],
+            started_at="2026-04-14T14:20:00Z",
+            runtime="2h 45m",
         ),
         WorkerSession(
             worker_id="backend-12",
             issue_number=12,
             title="Implement branch cleanup",
-            status="blocked",
+            status="stuck",
             lane="agent:backend",
             branch="agent/issue-12-backend",
             host="claude",
-            last_heartbeat="3m ago",
-            summary="Waiting on retention policy confirmation for stale branches.",
+            last_heartbeat="2h 15m ago",
+            summary="Worker running >1 hour, may be stuck. Check logs for progress.",
             comment_target="#12",
+            current_working_dir="/tmp/worktrees/issue-12",
+            current_command="./scripts/cleanup.sh --dry-run",
+            output_lines=[
+                "[-processing] Found 12 stale branches",
+                "[processing] Checking refs...",
+                "[processing] Analyzing git history...",
+            ],
+            started_at="2026-04-14T14:50:00Z",
+            runtime="2h 15m",
         ),
         WorkerSession(
             worker_id="qa-21",
@@ -67,6 +117,11 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="not started",
             summary="Queued behind active worker capacity.",
             comment_target="#21",
+            current_working_dir="",
+            current_command="",
+            output_lines=[],
+            started_at="",
+            runtime="",
         ),
         WorkerSession(
             worker_id="infra-8",
@@ -79,5 +134,44 @@ def build_mock_sessions() -> list[WorkerSession]:
             last_heartbeat="8m ago",
             summary="Validation failed after a schema mismatch in generated config.",
             comment_target="#8",
+            current_working_dir="/tmp/worktrees/issue-8",
+            current_command="python ./scripts/validate.sh",
+            output_lines=["./contracts/foo.schema.json: FAILED", "Error: Invalid JSON in schema"],
+            started_at="2026-04-14T15:10:00Z",
+            runtime="8m 12s",
+        ),
+        WorkerSession(
+            worker_id="backend-5",
+            issue_number=5,
+            title="Add webhook support",
+            status="done",
+            lane="agent:backend",
+            branch="agent/issue-5-backend",
+            host="opencode",
+            last_heartbeat="1d ago",
+            summary="Webhook support implemented and merged.",
+            comment_target="#5",
+            current_working_dir="/tmp/worktrees/issue-5",
+            current_command="",
+            output_lines=["PR merged to development"],
+            started_at="2026-04-10T10:00:00Z",
+            runtime="45m",
+        ),
+        WorkerSession(
+            worker_id="frontend-3",
+            issue_number=3,
+            title="Fix dark mode toggle",
+            status="closed",
+            lane="agent:frontend",
+            branch="agent/issue-3-frontend",
+            host="claude",
+            last_heartbeat="2d ago",
+            summary="Closed as duplicate of issue #7",
+            comment_target="#3",
+            current_working_dir="/tmp/worktrees/issue-3",
+            current_command="",
+            output_lines=[],
+            started_at="2026-04-08T09:00:00Z",
+            runtime="10m",
         ),
     ]

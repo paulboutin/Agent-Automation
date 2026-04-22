@@ -94,12 +94,14 @@ clean_log="${run_dir}/${run_id}.clean.log"
 message_file="${run_dir}/${run_id}.message.txt"
 heartbeat_file="${run_dir}/heartbeat-${issue_number}.json"
 prompt_text="$(cat "${prompt_file}")"
+started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 jq -n \
   --arg branch "${expected_branch}" \
   --arg issue "${issue_number}" \
-  --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, status: "running"}' > "${heartbeat_file}"
+  --arg timestamp "${started_at}" \
+  --arg started_at "${started_at}" \
+  '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, started_at: $started_at, status: "running"}' > "${heartbeat_file}"
 
 case "${host_name}" in
   codex)
@@ -174,7 +176,8 @@ jq -n \
   --arg issue "${issue_number}" \
   --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg status "${status}" \
-  '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, status: $status}' > "${heartbeat_file}"
+  --arg started_at "${started_at}" \
+  '{branch: $branch, issue: ($issue | tonumber), timestamp: $timestamp, started_at: $started_at, status: $status}' > "${heartbeat_file}"
 
 if [[ "${auto_finish}" == "true" ]]; then
   "./{{AUTOMATION_ROOT}}/hooks/local-worker-finish.sh" "${issue_number}" "${status}" "${message_file}"

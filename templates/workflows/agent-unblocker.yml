@@ -1,9 +1,7 @@
 name: Agent Unblocker
 
 on:
-  issues:
-    types:
-      - labeled
+  workflow_dispatch:
 
 permissions:
   contents: read

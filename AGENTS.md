@@ -9,6 +9,22 @@ This repo provides an agentic automation framework for coordinating AI workers t
 3. **Worker picks up issue**, creates branch, implements, opens PR
 4. **PR validates** automatically, human reviews and merges
 
+## Grouped Issues: Use Feature Branches
+
+When multiple issues are related/dependent, **use feature branches** to group them:
+
+1. **Create feature branch** first from development:
+   ```bash
+   git checkout development
+   git checkout -b feature/<name>
+   git push origin feature/<name>
+   ```
+2. Set `base_branch: "feature/<name>"` in each related issue
+3. Workers PR to the feature branch (not directly to development)
+4. Single PR from feature branch → development after all pass
+
+This avoids the problem of merging 6 individual PRs when they should be one.
+
 ## Issue Labels
 
 | Label | Description |
@@ -220,3 +236,92 @@ Example:
 - Issues #16-#20 target `feature/worker-dashboard`
 - Issue #21 runs QA on the feature branch
 - PR to development after all pass
+
+## 18) QA Workflow
+
+### Feature Branch QA Flow
+
+When a multi-task feature is ready for QA:
+
+1. **Create QA issue** using `.github/ISSUE_TEMPLATE/agent-task.yml`
+2. Set `base_branch: "feature/<name>"` in issue body
+3. Apply lane label `agent:qa`
+4. Apply `ready` label to dispatch
+
+The QA issue should target the feature branch and include:
+- Reference to all implemented issues in the feature
+- Specific validation requirements
+- Links to any testing artifacts
+
+### QA Review Process
+
+QA worker follows `.agent-automation/packs/qa/prompt.md`:
+
+1. **Read implementation** - Review all PRs for the feature
+2. **Validate outcome** - Run `./scripts/validate.sh` and feature-specific tests
+3. **Capture evidence** - Record commands, environments, results per checklist
+4. **Report findings** - Document pass/fail with evidence
+
+### Issue States and Labels
+
+| State | Labels | Action |
+|-------|--------|--------|
+| Ready for QA | `agent:qa`, `ready` | QA worker picks up |
+| QA in Progress | `agent:qa`, `active` | Worker actively testing |
+| QA Passed | `agent:qa`, `done` | Feature ready for merge |
+| QA Failed | `agent:qa`, `ready` | Return to implementer |
+
+### Self-Healing for Conflicts/Failures
+
+QA worker handles common issues:
+
+**Merge Conflicts:**
+1. Fetch latest from feature branch
+2. Rebase worker branch onto feature
+3. Resolve conflicts
+4. Push updated PR
+5. Re-run validation
+
+**Validation Failures:**
+1. Capture failure output
+2. Identify root cause
+3. If implementation bug: mark QA failed, tag implementer
+4. If test infrastructure: fix and retry
+5. Document resolution in issue
+
+**Self-Healing Rules:**
+- Max 2 self-healing attempts per issue
+- After 2 failures: mark `needs-decision` with question
+- Document all repair attempts in issue comments
+
+### Feature Complete → Merge to Development
+
+After QA passes:
+
+1. **Create merge PR** from `feature/<name>` to `development`
+2. **Run validation** on merge PR (`./scripts/validate.sh`)
+3. **Human review** - Final review of changes
+4. **Merge** - Squash and merge to development
+5. **Cleanup** - Delete feature branch (optional)
+
+```
+QA passes on feature/worker-dashboard
+    ↓
+Create PR: feature/worker-dashboard → development
+    ↓
+Run ./scripts/validate.sh
+    ↓
+Human review and merge
+    ↓
+Delete feature/worker-dashboard (optional)
+```
+
+### QA Evidence Requirements
+
+Per `.agent-automation/packs/qa/checklist.md`:
+
+- Record exact commands run
+- Capture environment details (OS, versions)
+- Document pass/fail with output
+- Identify any proof gaps needing trusted machine validation
+- Route gaps as follow-up work, don't hide them

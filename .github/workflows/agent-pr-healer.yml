@@ -1,0 +1,111 @@
+name: Agent PR Healer
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_retries:
+        description: 'Max retry attempts per PR'
+        default: '3'
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: agent-pr-healer
+  cancel-in-progress: false
+
+jobs:
+  detect-and-heal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect PR issues and heal
+        id: heal
+        env:
+          MAX_RETRIES: ${{ github.event.inputs.max_retries || '3' }}
+        run: |
+          set -euo pipefail
+          
+          source "./.agent-automation/hooks/agent-automation-common.sh"
+          
+          max_retries="${MAX_RETRIES:-3}"
+          needs_retry_label="needs-retry"
+          ready_label="ready"
+          active_label="active"
+          
+          owner="$(gh repo --json owner --jq '.owner.login')"
+          repo="$(gh repo --json name --jq '.name')"
+          
+          echo "Checking open PRs for conflicts or failures..."
+          
+          open_prs=$(gh pr list --state open --json number,headRefName,title 2>/dev/null)
+          
+          for pr_info in $(echo "${open_prs}" | jq -r '.[] | @json'); do
+            pr_number=$(echo "${pr_info}" | jq -r '.number')
+            pr_branch=$(echo "${pr_info}" | jq -r '.headRefName')
+            pr_title=$(echo "${pr_info}" | jq -r '.title')
+            
+            if [[ ! "${pr_branch}" =~ ^agent/ ]]; then
+              continue
+            fi
+            
+            echo "Checking PR #${pr_number}: ${pr_title}"
+            
+            merge_state=$(gh pr view "${pr_number}" --json mergeable 2>/dev/null)
+            mergeable=$(echo "${merge_state}" | jq -r '.mergeable // "unknown"')
+            
+            has_conflict=false
+            has_check_failure=false
+            
+            if [[ "${mergeable}" == "false" ]]; then
+              has_conflict=true
+              echo "  Merge conflict detected (not mergeable)"
+            fi
+            
+            combined_status=$(gh pr view "${pr_number}" --json statusCheckRollup 2>/dev/null)
+            check_rollup=$(echo "${combined_status}" | jq -r '.statusCheckRollup[]?')
+            
+            failed_checks=$(echo "${combined_status}" | jq -r '[.statusCheckRollup[]? | select(.conclusion == "failure" or .conclusion == "cancelled")] | length')
+            
+            if [[ "${failed_checks}" -gt 0 ]]; then
+              has_check_failure=true
+              echo "  Status check failure detected (${failed_checks} failed)"
+            fi
+                
+            if [[ "${has_conflict}" == "true" ]] || [[ "${has_check_failure}" == "true" ]]; then
+              echo "  PR needs healing, adding needs-retry label..."
+              
+              gh issue edit "${pr_number}" --add-label "${needs_retry_label}" 2>/dev/null || true
+              
+              restart_label="${needs_retry_label}-restart"
+              existing_restarts=$(gh issue list --state open --label "${restart_label}" --json number 2>/dev/null | jq "[.[] | select(.number == ${pr_number})] | length" || echo "0")
+              current_restarts=$((${existing_restarts:-0}))
+              
+              if [[ ${current_restarts} -ge ${max_retries} ]]; then
+                echo "  PR #${pr_number} exceeded retry limit (${max_retries}). Marking as failed."
+                continue
+              fi
+              
+              echo "  Marking retry attempt $((current_restarts + 1))/${max_retries}"
+              
+              gh issue comment "${pr_number}" --body "PR Healer: detected ${
+                if [[ "${has_conflict}" == "true" ]]; then echo "merge conflict";
+                elif [[ "${has_check_failure}" == "true" ]]; then echo "validation failure";
+                fi
+              }. Adding needs-retry label for worker to fix (attempt $((current_restarts + 1))/${max_retries})." 2>/dev/null || true
+            fi
+          done
+          
+          echo "PR healing check complete."
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "PR Healer workflow completed."

@@ -77,10 +77,13 @@ def resolve_labels(profile: dict) -> dict[str, str]:
     return {
         "ready": (labels.get("ready") or "ready").strip(),
         "active": (labels.get("active") or "active").strip(),
+        "done": (labels.get("done") or "done").strip(),
         "needsDecision": (labels.get("needsDecision") or "needs-decision").strip(),
         "decisionProposed": (labels.get("decisionProposed") or "decision-proposed").strip(),
         "agentFailed": (labels.get("agentFailed") or "agent-failed").strip(),
         "mergeConflict": (labels.get("mergeConflict") or "merge-conflict").strip(),
+        "needsQa": (labels.get("needsQa") or "needs-qa").strip(),
+        "qaPassed": (labels.get("qaPassed") or "qa-passed").strip(),
         "lanePrefix": (labels.get("lanePrefix") or "agent:").strip(),
     }
 
@@ -91,7 +94,9 @@ def resolve_worker_branch_format(profile: dict) -> str:
 
 
 def worker_branch_name(worker_branch_format: str, issue_number: int | str, lane: str) -> str:
-    return worker_branch_format.replace("{issue_number}", str(issue_number).strip()).replace("{lane}", lane.strip())
+    return worker_branch_format.replace("{issue_number}", str(issue_number).strip()).replace(
+        "{lane}", lane.strip()
+    )
 
 
 def worker_branch_prefix(worker_branch_format: str) -> str:
@@ -191,19 +196,25 @@ def resolve_policy(profile: dict, fallback_base_branch: str = "development") -> 
     queue_state_labels = [
         labels["ready"],
         labels["active"],
+        labels["done"],
         labels["needsDecision"],
         labels["decisionProposed"],
         labels["agentFailed"],
+        labels["needsQa"],
+        labels["qaPassed"],
     ]
 
     return {
         "defaultBaseBranch": resolve_default_base_branch(profile, fallback=fallback_base_branch),
         "readyLabel": labels["ready"],
         "activeLabel": labels["active"],
+        "doneLabel": labels["done"],
         "needsDecisionLabel": labels["needsDecision"],
         "decisionProposedLabel": labels["decisionProposed"],
         "agentFailedLabel": labels["agentFailed"],
         "mergeConflictLabel": labels["mergeConflict"],
+        "needsQaLabel": labels["needsQa"],
+        "qaPassedLabel": labels["qaPassed"],
         "lanePrefix": labels["lanePrefix"],
         "queueStateLabels": queue_state_labels,
         "validationBlockingLabels": queue_state_labels,
@@ -229,7 +240,9 @@ def resolve_promotion(profile: dict) -> dict:
     promotion = profile.get("promotion") or {}
     transitions = promotion.get("transitions") or []
     integration_branches = promotion.get("integrationBranches") or []
-    workstream_branch_map = ((profile.get("templates") or {}).get("pullRequest") or {}).get("workstreamBranchMap") or {}
+    workstream_branch_map = ((profile.get("templates") or {}).get("pullRequest") or {}).get(
+        "workstreamBranchMap"
+    ) or {}
     transition_by_target = {item["target"]: item for item in transitions}
     transition_by_base = {item["base"]: item for item in transitions}
     transition_by_pair = {(item["head"], item["base"]): item for item in transitions}
