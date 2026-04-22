@@ -1,17 +1,7 @@
 name: Agent PR Wake
 
 on:
-  pull_request_target:
-    branches:
-      - "development"
-    types:
-      - opened
-      - edited
-      - reopened
-      - ready_for_review
-      - review_requested
-      - assigned
-      - synchronize
+  workflow_dispatch:
 
 permissions:
   contents: read

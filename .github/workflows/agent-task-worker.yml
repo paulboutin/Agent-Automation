@@ -1,11 +1,7 @@
 name: Agent Task Worker
 
 on:
-  issues:
-    types:
-      - opened
-      - reopened
-      - labeled
+  workflow_dispatch:
 
 permissions:
   contents: write
